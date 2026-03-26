@@ -2,14 +2,36 @@
 
 # OpenSearch
 resource "aws_opensearch_domain" "wiz_code" {
-  domain_name        = "wiz-code-opensearch"
-  engine_version     = "OpenSearch_2.5"
-  instance_type      = "t3.small.opensearch"
-  instance_count     = 2
-  ebs_enabled        = true
-  ebs_volume_size    = 10
-  subnet_ids         = [aws_subnet.wiz_code1.id, aws_subnet.wiz_code2.id]
-  security_group_ids = [aws_security_group.opensearch_wiz_code.id]
+  domain_name    = "wiz-code-opensearch"
+  engine_version = "OpenSearch_2.5"
+
+  cluster_config {
+    instance_type  = "t3.small.search"
+    instance_count = 2
+  }
+
+  ebs_options {
+    ebs_enabled = true
+    volume_size = 10
+  }
+
+  vpc_options {
+    subnet_ids         = [aws_subnet.wiz_code1.id, aws_subnet.wiz_code2.id]
+    security_group_ids = [aws_security_group.opensearch_wiz_code.id]
+  }
+
+  node_to_node_encryption {
+    enabled = false
+  }
+
+  encrypt_at_rest {
+    enabled = false
+  }
+
+  domain_endpoint_options {
+    enforce_https = false
+  }
+
   access_policies = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -21,10 +43,6 @@ resource "aws_opensearch_domain" "wiz_code" {
       }
     ]
   })
-  publicly_accessible_enabled     = true
-  node_to_node_encryption_enabled = false
-  encryption_at_rest_enabled      = false
-  enforce_https                   = false
 }
 
 resource "aws_security_group" "opensearch_wiz_code" {
