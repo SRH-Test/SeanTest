@@ -41,7 +41,7 @@ jobs:
         env:
           PR_REF: ${{ github.event.pull_request.head.ref }}
           DEFAULT_REF: ${{ github.event.repository.default_branch }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Authenticates the 'gh' CLI tool to leave comments
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 1. Determine target branch context
           REF="$PR_REF"
@@ -89,7 +89,8 @@ jobs:
           Once my code modifications are ready and background verifications pass, I will automatically open a Pull Request and link it directly back to this thread for human review!
           EOF
           )
-            echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}"
+            # Added '-F -' to make sure the CLI knows to expect piped text
+            echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" -F -
           else
             echo "Failed to retrieve Copilot task URL. Response was: $RESPONSE"
             exit 1
