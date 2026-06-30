@@ -86,7 +86,6 @@ jobs:
           I am processing the remediation instructions provided by the security tool. You can monitor my live execution progress and logs here:
           👉 **[View Copilot Live Task Progress]($TASK_URL)**
           
-          Once my code modifications are ready and background verifications pass, I will automatically open a Pull Request and link it directly back to this thread for human review!
           EOF
           )
             # Added '-F -' to make sure the CLI knows to expect piped text
