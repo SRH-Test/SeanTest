@@ -98,18 +98,16 @@ jobs:
 
           # 6. Post tracking comment back to the issue/PR thread
           if [ -n "$ISSUE_NUMBER" ] && [ "$ISSUE_NUMBER" != "null" ]; then
-            COMMENT_BODY=$(cat <<EOF
-🤖 **Copilot is on the case!**
+            COMMENT_BODY="🤖 **Copilot is on the case!**
 
-I'm processing the remediation instructions to resolve: **"$TITLE"**
+          I'm processing the remediation instructions to resolve: **\"$TITLE\"**
 
-**What happens next?**
-* I'm analyzing the codebase and staging the required fixes.
-* Once finished, I'll automatically generate a new Pull Request against \`$REF\` with the proposed changes.
+          **What happens next?**
+          * I'm analyzing the codebase and staging the required fixes.
+          * Once finished, I'll automatically generate a new Pull Request against \`$REF\` with the proposed changes.
 
-Go grab a coffee ☕—$LINK_TEXT
-EOF
-            )
+          Go grab a coffee ☕—$LINK_TEXT"
+
             echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" -F -
             echo "Successfully posted comment to issue #$ISSUE_NUMBER"
           else
