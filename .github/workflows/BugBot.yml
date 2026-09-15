@@ -1,5 +1,4 @@
 name: Bug Bot
-description: A GitHub Actions workflow that feeds issue context to GitHub Copilot and leaves a tracking comment.
 
 permissions:
   contents: write
