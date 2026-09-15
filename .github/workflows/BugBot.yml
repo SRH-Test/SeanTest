@@ -21,7 +21,7 @@ jobs:
         contains(github.event.comment.body, '@copilot') &&
         (
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
-          github.event.comment.user.login == 'wiz-a6f6dcff4a[bot]'
+          contains(github.event.comment.user.login, 'wiz-a6f6dcff4a')
         )
       ) ||
       (
@@ -29,7 +29,7 @@ jobs:
         contains(github.event.comment.body, '@copilot') &&
         (
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
-          github.event.comment.user.login == 'wiz-a6f6dcff4a[bot]'
+          contains(github.event.comment.user.login, 'wiz-a6f6dcff4a')
         )
       ) ||
       (
@@ -37,7 +37,7 @@ jobs:
         contains(github.event.issue.body, '@copilot') &&
         (
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) ||
-          github.event.issue.user.login == 'wiz-a6f6dcff4a[bot]'
+          contains(github.event.issue.user.login, 'wiz-a6f6dcff4a')
         )
       )
     runs-on: ubuntu-latest
