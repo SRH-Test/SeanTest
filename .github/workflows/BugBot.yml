@@ -81,12 +81,18 @@ jobs:
           # 6. Post a tracking comment back to the user on the issue/PR thread
           if [ -n "$TASK_URL" ] && [ "$TASK_URL" != "null" ]; then
             COMMENT_BODY=$(cat <<EOF
-          🤖 **GitHub Copilot has taken over from Claude!**
-          
-          I am processing the remediation instructions provided by the security tool. You can monitor my live execution progress and logs here:
-          👉 **[View Copilot Live Task Progress]($TASK_URL)**
-          
+          **Copilot is on the case!**
+
+          I'm processing the remediation instructions to resolve: **"$TITLE"**
+
+          **What happens next?**
+          * I'm analyzing the codebase and staging the required fixes.
+          * Once finished, I'll automatically generate a new Pull Request against \`$REF\` with the proposed changes.
+
+          Go grab a coffee ☕—you can track my live execution progress and logs here:
+          **[View Live Task Progress]($TASK_URL)**
           EOF
+          )
           )
             # Added '-F -' to make sure the CLI knows to expect piped text
             echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" -F -
