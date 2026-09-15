@@ -20,17 +20,26 @@ jobs:
       (
         github.event_name == 'issue_comment' &&
         contains(github.event.comment.body, '@copilot') &&
-        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+        (
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+          github.event.comment.user.login == 'wiz-a6f6dcff4a[bot]'
+        )
       ) ||
       (
         github.event_name == 'pull_request_review_comment' &&
         contains(github.event.comment.body, '@copilot') &&
-        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+        (
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+          github.event.comment.user.login == 'wiz-a6f6dcff4a[bot]'
+        )
       ) ||
       (
         github.event_name == 'issues' &&
         contains(github.event.issue.body, '@copilot') &&
-        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+        (
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) ||
+          github.event.issue.user.login == 'wiz-a6f6dcff4a[bot]'
+        )
       )
     runs-on: ubuntu-latest
     steps:
