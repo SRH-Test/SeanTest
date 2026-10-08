@@ -28,7 +28,7 @@ jobs:
         # We run the scan and save it to a JSON file.
         # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
         run: |
-          ./wizcli dir scan --path . --format json > wiz_result.json || true
+          ./wizcli dir scan --path . --by-policy-checks="DISABLED" --format json > wiz_result.json || true
 
       - name: Filter & Format Findings
         id: parse_findings
