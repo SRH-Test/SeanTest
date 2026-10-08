@@ -17,7 +17,7 @@ jobs:
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-        run: ./wizcli dir scan --path .
+        run: ./wizcli dir scan --path . --by-policy-hits DISABLED --output results.json,json
 
       # Uncomment to scan IaC templates instead:
       # - name: Scan IaC templates
