@@ -13,14 +13,13 @@ jobs:
           curl -Lo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x wizcli
 
-      - name: Authenticate to Wiz
+      - name: Scan Dir
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        run: ./wizcli dir scan --path .
 
-      - name: Scan IaC templates
-        run: ./wizcli iac scan --path .
+
 
       # Uncomment to scan a container image instead:
       # - name: Scan container image
