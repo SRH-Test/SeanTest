@@ -61,19 +61,27 @@ jobs:
           LICENSES=$(jq -c "[(.result.licenses // [])[] | . + {sev: $SEV}]" wiz_result.json)
           LICENSE_COUNT=$(echo "$LICENSES" | jq 'length')
 
-          # 4. SAST findings: one rule may contain multiple matches
-          # Locate SAST data under any .result key containing "sast" (schema varies); accept arrays or objects wrapping arrays
-          SAST=$(jq -c "[ (.result // {} | to_entries[] | select(.key | test(\"sast\"; \"i\")) | .value)
-            | (if type == \"array\" then . elif type == \"object\" then ([.[] | select(type == \"array\")] | add // []) else [] end)[]
+          # SAST findings are returned in ruleMatches; retain sast as a fallback for older output schemas
+          SAST=$(jq -c "[
+            ([.result.ruleMatches, .result.sast]
+              | map(if type == \"array\" then . elif type == \"object\" then ([.[] | select(type == \"array\")] | add // []) else [] end)
+              | add // [])[]
             | . as \$i
             | (\$i.rule // \$i) as \$r
-            | (if ((\$i.matches // \$i.findings // \$i.ruleMatches // []) | length) > 0 then (\$i.matches // \$i.findings // \$i.ruleMatches) else [{}] end)[]
-            | . as \$m
-            | {name: (\$r.ruleName // \$r.name // \$r.ruleId // \$r.id // \"SAST Finding\"),
-               sev: (\$r.severity // \$i.severity // \"UNKNOWN\" | ascii_upcase),
-               file: (\$m.filename // \$m.filePath // \$m.path // \$m.location.filePath // \$m.location.path // \$i.location.filePath // \$i.location.path // \$i.filename // \$i.path // \"N/A\"),
-               line: (\$m.lineNumber // \$m.startLine // \$m.line // \$m.location.startLine // \$m.location.range.start.line // \$i.location.startLine // \"N/A\"),
-               cwe: ((\$r.cwe // \$r.cwes // \$i.cwe // \$i.cwes // []) | if type == \"array\" then join(\", \") else tostring end)} ]" wiz_result.json)
+            | {
+                name: (\$i.name // \$r.ruleName // \$r.name // \$r.ruleId // \$r.id // \"SAST Finding\"),
+                sev: (\$i.severity // \$r.severity // \"UNKNOWN\" | ascii_upcase),
+                file: (\$i.filePath // \$i.filename // \$i.path // \$i.location.filePath // \$i.location.path // \"N/A\"),
+                line: (\$i.startLine // \$i.lineNumber // \$i.line // \$i.location.startLine // \$i.location.range.start.line // \"N/A\"),
+                cwe: (([ \$i.weaknesses[]?.id, \$r.cwe, \$r.cwes, \$i.cwe, \$i.cwes ]
+                  | map(select(. != null) | if type == \"array\" then join(\", \") else tostring end)
+                  | unique | join(\", \"))),
+                status: ((\$i.ignoredPolicyMatches // [])
+                  | map(.ignoreReason // .policy.name // \"Ignored\")
+                  | unique
+                  | if length == 0 then \"Reported\" else \"Ignored: \" + join(\", \") end)
+              }
+          ]" wiz_result.json)
           SAST=${SAST:-[]}
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
@@ -89,9 +97,9 @@ jobs:
           # Format SAST Table (Static Code Analysis)
           if [ "$SAST_COUNT" -gt 0 ]; then
             echo "#### 🛡️ Code Security (SAST)" >> comment.md
-            echo "| Vulnerability / Rule | File Path | Line | Severity | CWE |" >> comment.md
-            echo "|---|---|---|---|---|" >> comment.md
-            echo "$SAST" | jq -r '.[] | "| \(.name) | \(.file) | \(.line) | **\(.sev)** | \(if .cwe == "" then "N/A" else .cwe end) |"' >> comment.md
+            echo "| Vulnerability / Rule | File Path | Line | Severity | CWE | Policy Status |" >> comment.md
+            echo "|---|---|---|---|---|---|" >> comment.md
+            echo "$SAST" | jq -r '.[] | "| \(.name) | \(.file) | \(.line) | **\(.sev)** | \(if .cwe == "" then "N/A" else .cwe end) | \(.status) |"' >> comment.md
             echo "" >> comment.md
           fi
 
