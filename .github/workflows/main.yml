@@ -46,7 +46,7 @@ jobs:
           LICENSE_COUNT=$(echo "$LICENSES" | jq '. | length')
 
           # 4. Parse SAST Findings (Static Code Analysis)
-          SAST=$(jq -r '[.result.sastResults[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
+          SAST=$(jq -r '[.result.sastFindings[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
           SAST_COUNT=$(echo "$SAST" | jq '. | length')
 
           TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
@@ -63,7 +63,7 @@ jobs:
             echo "#### 🛡️ Code Security (SAST)" >> comment.md
             echo "| Vulnerability / Rule | File Path | Line | Severity | CWE |" >> comment.md
             echo "|---|---|---|---|---|" >> comment.md
-            echo "$SAST" | jq -r '.[] | "| \(.ruleName // .name // "SAST Finding") | \(.filePath // .file) | \(.line // .lineNumber // "N/A") | **\(.severity)** | \(.cwe // "N/A") |"' >> comment.md
+            echo "$SAST" | jq -r '.[] | "| \(.name // .ruleId // "SAST Finding") | \(.location.filePath // "N/A") | \(.location.startLine // "N/A") | **\(.severity)** | \((.cwe // []) | join(", ") | if . == "" then "N/A" else . end) |"' >> comment.md
             echo "" >> comment.md
           fi
 
@@ -72,7 +72,7 @@ jobs:
             echo "#### 📦 Dependency Vulnerabilities (Libraries)" >> comment.md
             echo "| Name | CVE | Severity | Version | Fixed Version |" >> comment.md
             echo "|---|---|---|---|---|" >> comment.md
-            echo "$VULNS" | jq -r '.[] | "| \(.name) | \(.cve) | **\(.severity)** | \(.version) | \(.fixedVersion // "N/A") |"' >> comment.md
+            echo "$VULNS" | jq -r '.[] | "| \(.package.name // .name) | \(.id) | **\(.severity)** | \(.package.version // "N/A") | \(.fixedVersion // "N/A") |"' >> comment.md
             echo "" >> comment.md
           fi
 
@@ -81,7 +81,7 @@ jobs:
             echo "#### 🔑 Exposed Secrets" >> comment.md
             echo "| Description | Path | Severity | Snippet |" >> comment.md
             echo "|---|---|---|---|" >> comment.md
-            echo "$SECRETS" | jq -r '.[] | "| \(.description) | \(.path) | **\(.severity)** | `\(.snippet // "REDACTED")` |"' >> comment.md
+            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.location.filePath // "N/A") | **\(.severity)** | `\(.location.snippet // "REDACTED")` |"' >> comment.md
             echo "" >> comment.md
           fi
 
