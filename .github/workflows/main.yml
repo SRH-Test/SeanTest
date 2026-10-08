@@ -1,34 +1,117 @@
 name: Wiz Security Scan
 
-on: [push, pull_request]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Required permissions for GITHUB_TOKEN to write and update PR comments
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
   wiz-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       - name: Download WizCLI
         run: |
           curl -Lo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x wizcli
 
-      - name: Scan directory
+      - name: Scan directory & Save JSON
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-        run: ./wizcli dir scan --path . --by-policy-hits DISABLED --output results.json,json
+        # We run the scan and save it to a JSON file.
+        # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
+        run: |
+          ./wizcli dir scan --path . --format json > wiz_result.json || true
 
-      # Uncomment to scan IaC templates instead:
-      # - name: Scan IaC templates
-      #   env:
-      #     WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-      #     WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-      #   run: ./wizcli iac scan --path .
+      - name: Filter & Format Findings
+        id: parse_findings
+        run: |
+          # 1. Parse Vulnerabilities (Libraries)
+          VULNS=$(jq -r '[.result.vulnerabilities[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
+          VULN_COUNT=$(echo "$VULNS" | jq '. | length')
 
-      # Uncomment to scan a container image instead:
-      # - name: Scan container image
-      #   env:
-      #     WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-      #     WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-      #   run: ./wizcli image scan --image my-image:tag
+          # 2. Parse Secrets
+          SECRETS=$(jq -r '[.result.secrets[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
+          SECRET_COUNT=$(echo "$SECRETS" | jq '. | length')
+
+          # 3. Parse License Issues
+          LICENSES=$(jq -r '[.result.licenses[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
+          LICENSE_COUNT=$(echo "$LICENSES" | jq '. | length')
+
+          # 4. Parse SAST Findings (Static Code Analysis)
+          SAST=$(jq -r '[.result.sastResults[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
+          SAST_COUNT=$(echo "$SAST" | jq '. | length')
+
+          TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
+
+          # Initialize the Markdown comment with a hidden tracking ID
+          echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
+          echo "### 🛡️ Wiz Security Scan Results" >> comment.md
+          echo "Status: **Action Required**" >> comment.md
+          echo "Found **$TOTAL_FINDINGS** HIGH or CRITICAL severity findings across all scanners." >> comment.md
+          echo "---" >> comment.md
+
+          # Format SAST Table (Static Code Analysis)
+          if [ "$SAST_COUNT" -gt 0 ]; then
+            echo "#### 🛡️ Code Security (SAST)" >> comment.md
+            echo "| Vulnerability / Rule | File Path | Line | Severity | CWE |" >> comment.md
+            echo "|---|---|---|---|---|" >> comment.md
+            echo "$SAST" | jq -r '.[] | "| \(.ruleName // .name // "SAST Finding") | \(.filePath // .file) | \(.line // .lineNumber // "N/A") | **\(.severity)** | \(.cwe // "N/A") |"' >> comment.md
+            echo "" >> comment.md
+          fi
+
+          # Format Vulnerabilities Table (Libraries)
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "#### 📦 Dependency Vulnerabilities (Libraries)" >> comment.md
+            echo "| Name | CVE | Severity | Version | Fixed Version |" >> comment.md
+            echo "|---|---|---|---|---|" >> comment.md
+            echo "$VULNS" | jq -r '.[] | "| \(.name) | \(.cve) | **\(.severity)** | \(.version) | \(.fixedVersion // "N/A") |"' >> comment.md
+            echo "" >> comment.md
+          fi
+
+          # Format Secrets Table
+          if [ "$SECRET_COUNT" -gt 0 ]; then
+            echo "#### 🔑 Exposed Secrets" >> comment.md
+            echo "| Description | Path | Severity | Snippet |" >> comment.md
+            echo "|---|---|---|---|" >> comment.md
+            echo "$SECRETS" | jq -r '.[] | "| \(.description) | \(.path) | **\(.severity)** | `\(.snippet // "REDACTED")` |"' >> comment.md
+            echo "" >> comment.md
+          fi
+
+          # Format Licenses Table
+          if [ "$LICENSE_COUNT" -gt 0 ]; then
+            echo "#### 📜 Restrictive Licenses" >> comment.md
+            echo "| Rule Name | Component | Severity | Licenses |" >> comment.md
+            echo "|---|---|---|---|" >> comment.md
+            echo "$LICENSES" | jq -r '.[] | "| \(.ruleName) | \(.componentName) v\(.componentVersion) | **\(.severity)** | \(.licenses // "N/A") |"' >> comment.md
+            echo "" >> comment.md
+          fi
+
+          # Fallback if no issues of interest were found
+          if [ "$TOTAL_FINDINGS" -eq 0 ]; then
+            echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
+            echo "✨ **No HIGH or CRITICAL issues found.** Great job!" >> comment.md
+          fi
+
+      - name: Post or Update PR Comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Use gh to find if we've already commented on this PR
+          EXISTING_COMMENT_ID=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments[] | select(.body | contains("<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->")) | .id' | head -n 1)
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            echo "Updating existing comment (ID: $EXISTING_COMMENT_ID)..."
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$EXISTING_COMMENT_ID" -F body=@comment.md
+          else
+            echo "No existing comment found. Creating a new one..."
+            gh pr comment "$PR_NUMBER" --body-file comment.md
+          fi
