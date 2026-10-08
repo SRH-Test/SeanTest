@@ -32,7 +32,12 @@ jobs:
 
       - name: Filter & Format Findings
         id: parse_findings
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # Files touched by this PR; secrets in untouched, pre-existing files are not reported
+          gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
           # Log the top-level structure to help diagnose schema differences
           jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
 
@@ -46,7 +51,9 @@ jobs:
           VULN_COUNT=$(echo "$VULNS" | jq 'length')
 
           # 2. Secrets
-          SECRETS=$(jq -c "[(.result.secrets // [])[] | . + {sev: $SEV}]" wiz_result.json)
+          SECRETS=$(jq -c --slurpfile changed changed_files.json "[(.result.secrets // [])[]
+            | . + {sev: $SEV, file: (.path // .filename // .filePath // .location.filePath // .location.path // \"\")}
+            | select(.file as \$f | \$changed[0] | index(\$f))]" wiz_result.json)
           SECRET_COUNT=$(echo "$SECRETS" | jq 'length')
 
           # 3. License issues
@@ -97,7 +104,7 @@ jobs:
             echo "#### 🔑 Exposed Secrets" >> comment.md
             echo "| Description | Path | Severity | Snippet |" >> comment.md
             echo "|---|---|---|---|" >> comment.md
-            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.location.filePath // "N/A") | **\(.sev)** | `\(.location.snippet // "REDACTED")` |"' >> comment.md
+            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.file) | **\(.sev)** | `\(.snippet // .location.snippet // "REDACTED")` |"' >> comment.md
             echo "" >> comment.md
           fi
 
