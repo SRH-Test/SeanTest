@@ -40,6 +40,7 @@ jobs:
           gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
           # Log the top-level structure to help diagnose schema differences
           jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
+          jq -c '(.result // {}) | to_entries[] | select(.key | test("sast"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
 
           SEV='(.severity // "UNKNOWN" | ascii_upcase)'
 
@@ -61,15 +62,19 @@ jobs:
           LICENSE_COUNT=$(echo "$LICENSES" | jq 'length')
 
           # 4. SAST findings: one rule may contain multiple matches
-          SAST=$(jq -c "[ (.result.sastFindings // .result.sast.findings // .result.sast // [])
-            | (if type == \"array\" then . else [] end)[]
-            | . as \$r
-            | (if ((\$r.matches // \$r.findings // []) | length) > 0 then (\$r.matches // \$r.findings) else [{}] end)[]
-            | {name: (\$r.ruleName // \$r.name // \$r.ruleId // \"SAST Finding\"),
-               sev: (\$r.severity // \"UNKNOWN\" | ascii_upcase),
-               file: (.filename // .filePath // .path // \$r.location.filePath // \$r.filename // \"N/A\"),
-               line: (.lineNumber // .startLine // .line // \$r.location.startLine // \"N/A\"),
-               cwe: ((\$r.cwe // \$r.cwes // []) | if type == \"array\" then join(\", \") else tostring end)} ]" wiz_result.json)
+          # Locate SAST data under any .result key containing "sast" (schema varies); accept arrays or objects wrapping arrays
+          SAST=$(jq -c "[ (.result // {} | to_entries[] | select(.key | test(\"sast\"; \"i\")) | .value)
+            | (if type == \"array\" then . elif type == \"object\" then ([.[] | select(type == \"array\")] | add // []) else [] end)[]
+            | . as \$i
+            | (\$i.rule // \$i) as \$r
+            | (if ((\$i.matches // \$i.findings // \$i.ruleMatches // []) | length) > 0 then (\$i.matches // \$i.findings // \$i.ruleMatches) else [{}] end)[]
+            | . as \$m
+            | {name: (\$r.ruleName // \$r.name // \$r.ruleId // \$r.id // \"SAST Finding\"),
+               sev: (\$r.severity // \$i.severity // \"UNKNOWN\" | ascii_upcase),
+               file: (\$m.filename // \$m.filePath // \$m.path // \$m.location.filePath // \$m.location.path // \$i.location.filePath // \$i.location.path // \$i.filename // \$i.path // \"N/A\"),
+               line: (\$m.lineNumber // \$m.startLine // \$m.line // \$m.location.startLine // \$m.location.range.start.line // \$i.location.startLine // \"N/A\"),
+               cwe: ((\$r.cwe // \$r.cwes // \$i.cwe // \$i.cwes // []) | if type == \"array\" then join(\", \") else tostring end)} ]" wiz_result.json)
+          SAST=${SAST:-[]}
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
           TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
