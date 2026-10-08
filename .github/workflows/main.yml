@@ -32,22 +32,45 @@ jobs:
 
       - name: Filter & Format Findings
         id: parse_findings
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 1. Parse Vulnerabilities (Libraries)
-          VULNS=$(jq -r '[.result.vulnerabilities[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
-          VULN_COUNT=$(echo "$VULNS" | jq '. | length')
+          # Files touched by this PR; secrets in untouched, pre-existing files are not reported
+          gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
+          # Log the top-level structure to help diagnose schema differences
+          jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
 
-          # 2. Parse Secrets
-          SECRETS=$(jq -r '[.result.secrets[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
-          SECRET_COUNT=$(echo "$SECRETS" | jq '. | length')
+          SEV='(.severity // "UNKNOWN" | ascii_upcase)'
 
-          # 3. Parse License Issues
-          LICENSES=$(jq -r '[.result.licenses[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
-          LICENSE_COUNT=$(echo "$LICENSES" | jq '. | length')
+          # 1. Vulnerabilities live under libraries[] and osPackages[] (all severities)
+          VULNS=$(jq -c "[ ((.result.libraries // [])[], (.result.osPackages // [])[]) as \$p
+            | (\$p.vulnerabilities // [])[]
+            | . + {pkgName: \$p.name, pkgVersion: \$p.version, sev: $SEV} ]
+            | sort_by(.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 else 3 end)" wiz_result.json)
+          VULN_COUNT=$(echo "$VULNS" | jq 'length')
 
-          # 4. Parse SAST Findings (Static Code Analysis)
-          SAST=$(jq -r '[.result.sastFindings[]? | select(.severity == "HIGH" or .severity == "CRITICAL")]' wiz_result.json)
-          SAST_COUNT=$(echo "$SAST" | jq '. | length')
+          # 2. Secrets
+          SECRETS=$(jq -c --slurpfile changed changed_files.json "[(.result.secrets // [])[]
+            | . + {sev: $SEV, file: (.path // .filename // .filePath // .location.filePath // .location.path // \"\")}
+            | select(.file as \$f | \$changed[0] | index(\$f))]" wiz_result.json)
+          SECRET_COUNT=$(echo "$SECRETS" | jq 'length')
+
+          # 3. License issues
+          LICENSES=$(jq -c "[(.result.licenses // [])[] | . + {sev: $SEV}]" wiz_result.json)
+          LICENSE_COUNT=$(echo "$LICENSES" | jq 'length')
+
+          # 4. SAST findings: one rule may contain multiple matches
+          SAST=$(jq -c "[ (.result.sastFindings // .result.sast.findings // .result.sast // [])
+            | (if type == \"array\" then . else [] end)[]
+            | . as \$r
+            | (if ((\$r.matches // \$r.findings // []) | length) > 0 then (\$r.matches // \$r.findings) else [{}] end)[]
+            | {name: (\$r.ruleName // \$r.name // \$r.ruleId // \"SAST Finding\"),
+               sev: (\$r.severity // \"UNKNOWN\" | ascii_upcase),
+               file: (.filename // .filePath // .path // \$r.location.filePath // \$r.filename // \"N/A\"),
+               line: (.lineNumber // .startLine // .line // \$r.location.startLine // \"N/A\"),
+               cwe: ((\$r.cwe // \$r.cwes // []) | if type == \"array\" then join(\", \") else tostring end)} ]" wiz_result.json)
+          SAST_COUNT=$(echo "$SAST" | jq 'length')
 
           TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
 
@@ -55,7 +78,7 @@ jobs:
           echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
           echo "### 🛡️ Wiz Security Scan Results" >> comment.md
           echo "Status: **Action Required**" >> comment.md
-          echo "Found **$TOTAL_FINDINGS** HIGH or CRITICAL severity findings across all scanners." >> comment.md
+          echo "Found **$TOTAL_FINDINGS** findings across all scanners." >> comment.md
           echo "---" >> comment.md
 
           # Format SAST Table (Static Code Analysis)
@@ -63,7 +86,7 @@ jobs:
             echo "#### 🛡️ Code Security (SAST)" >> comment.md
             echo "| Vulnerability / Rule | File Path | Line | Severity | CWE |" >> comment.md
             echo "|---|---|---|---|---|" >> comment.md
-            echo "$SAST" | jq -r '.[] | "| \(.name // .ruleId // "SAST Finding") | \(.location.filePath // "N/A") | \(.location.startLine // "N/A") | **\(.severity)** | \((.cwe // []) | join(", ") | if . == "" then "N/A" else . end) |"' >> comment.md
+            echo "$SAST" | jq -r '.[] | "| \(.name) | \(.file) | \(.line) | **\(.sev)** | \(if .cwe == "" then "N/A" else .cwe end) |"' >> comment.md
             echo "" >> comment.md
           fi
 
@@ -72,7 +95,7 @@ jobs:
             echo "#### 📦 Dependency Vulnerabilities (Libraries)" >> comment.md
             echo "| Name | CVE | Severity | Version | Fixed Version |" >> comment.md
             echo "|---|---|---|---|---|" >> comment.md
-            echo "$VULNS" | jq -r '.[] | "| \(.package.name // .name) | \(.id) | **\(.severity)** | \(.package.version // "N/A") | \(.fixedVersion // "N/A") |"' >> comment.md
+            echo "$VULNS" | jq -r '.[] | "| \(.pkgName // .name) | \(.name // .id) | **\(.sev)** | \(.pkgVersion // "N/A") | \(.fixedVersion // "N/A") |"' >> comment.md
             echo "" >> comment.md
           fi
 
@@ -81,7 +104,7 @@ jobs:
             echo "#### 🔑 Exposed Secrets" >> comment.md
             echo "| Description | Path | Severity | Snippet |" >> comment.md
             echo "|---|---|---|---|" >> comment.md
-            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.location.filePath // "N/A") | **\(.severity)** | `\(.location.snippet // "REDACTED")` |"' >> comment.md
+            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.file) | **\(.sev)** | `\(.snippet // .location.snippet // "REDACTED")` |"' >> comment.md
             echo "" >> comment.md
           fi
 
@@ -90,14 +113,14 @@ jobs:
             echo "#### 📜 Restrictive Licenses" >> comment.md
             echo "| Rule Name | Component | Severity | Licenses |" >> comment.md
             echo "|---|---|---|---|" >> comment.md
-            echo "$LICENSES" | jq -r '.[] | "| \(.ruleName) | \(.componentName) v\(.componentVersion) | **\(.severity)** | \(.licenses // "N/A") |"' >> comment.md
+            echo "$LICENSES" | jq -r '.[] | "| \(.ruleName) | \(.componentName) v\(.componentVersion) | **\(.sev)** | \(.licenses // "N/A") |"' >> comment.md
             echo "" >> comment.md
           fi
 
           # Fallback if no issues of interest were found
           if [ "$TOTAL_FINDINGS" -eq 0 ]; then
             echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
-            echo "✨ **No HIGH or CRITICAL issues found.** Great job!" >> comment.md
+            echo "✨ **No issues found.** Great job!" >> comment.md
           fi
 
       - name: Post or Update PR Comment
