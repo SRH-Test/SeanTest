@@ -1,0 +1,13 @@
+{
+  "name": "wiz-vulnerability-test",
+  "version": "1.0.0",
+  "description": "code test for CI pipeline",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "mysql2": "3.24.5"
+  }
+}
