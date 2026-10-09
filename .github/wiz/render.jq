@@ -1,5 +1,5 @@
 # Renders the normalized report as the PR summary comment (Markdown).
-# Args: --arg repo, --arg sha, --arg server, --arg run_url, --arg fail_on, --arg inline_min, --argjson max_rows
+# Args: --arg repo, --arg sha, --arg server, --arg run_url, --arg inline_min, --argjson max_rows
 include "common";
 
 def blob($file; $line): "\($server)/\($repo)/blob/\($sha)/\($file | url_path)" + (if $line then "#L\($line)" else "" end);
@@ -108,7 +108,7 @@ def dependency_fixes:
     "|---|---|",
     "| Verdict | `\($r.meta.verdict // "n/a")` |",
     "| Policies | \(if ($r.meta.policies | length) == 0 then "—" else ($r.meta.policies | map("\(.name) (\(.enforcement | ascii_downcase))") | join(", ")) end) |",
-    "| Gate | \(if $fail_on == "NONE" then "Report only" else "Fails on \($fail_on | sev_label) or worse" end) |",
+    "| Enforcement | \([$r.meta.policies[] | select(.enforcement == "BLOCK") | .name] | if length == 0 then "Audit only: this check never fails on findings" else "Fails this check on violations of \(join(", "))" end) |",
     "| Wiz CLI | \($r.meta.cli_version // "n/a") |",
     "| Scanned | \($r.meta.scanned_at // "n/a" | . as $t | try (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | strftime("%Y-%m-%d %H:%M UTC")) catch $t) |",
     "| Commit | `\($sha)` |",

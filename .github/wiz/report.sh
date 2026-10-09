@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Builds the Wiz PR report from wizcli output in $WIZ_OUT:
 #   comment.md            summary comment for the PR
-#   review-comments.json  inline review comments for high-severity code findings
+#   review-comments.json  inline review comments for High and Critical code findings
 #   sarif-upload.sarif    SARIF with repo-relative URIs for GitHub code scanning
-# and writes gate_count (findings at or above FAIL_ON_SEVERITY) to $GITHUB_OUTPUT.
+# and writes the Wiz policy verdict to $GITHUB_OUTPUT.
 set -euo pipefail
 
 LIB=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 : "${WIZ_OUT:?}" "${REPO:?}" "${HEAD_SHA:?}"
 SERVER_URL=${SERVER_URL:-https://github.com}
 RUN_URL=${RUN_URL:-}
-INLINE_MIN_SEVERITY=${INLINE_MIN_SEVERITY:-HIGH}
-FAIL_ON_SEVERITY=${FAIL_ON_SEVERITY:-NONE}
-MAX_ROWS=${MAX_ROWS:-50}
+INLINE_MIN_SEVERITY=HIGH
+MAX_ROWS=50
 GITHUB_OUTPUT=${GITHUB_OUTPUT:-/dev/null}
 
 JSON="$WIZ_OUT/wiz_result.json"
@@ -28,7 +27,6 @@ if [ ! -s "$JSON" ] || [ ! -s "$SARIF" ]; then
     echo "See the [workflow run]($RUN_URL) for details."
   } > "$WIZ_OUT/comment.md"
   echo '[]' > "$WIZ_OUT/review-comments.json"
-  echo "gate_count=0" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
@@ -38,7 +36,7 @@ jq -n -L "$LIB" \
 
 jq -r -L "$LIB" \
   --arg repo "$REPO" --arg sha "$HEAD_SHA" --arg server "$SERVER_URL" --arg run_url "$RUN_URL" \
-  --arg fail_on "$FAIL_ON_SEVERITY" --arg inline_min "$INLINE_MIN_SEVERITY" --argjson max_rows "$MAX_ROWS" \
+  --arg inline_min "$INLINE_MIN_SEVERITY" --argjson max_rows "$MAX_ROWS" \
   -f "$LIB/render.jq" "$WIZ_OUT/report.json" > "$WIZ_OUT/comment.md"
 
 jq -c -L "$LIB" --arg min_severity "$INLINE_MIN_SEVERITY" \
@@ -51,16 +49,8 @@ jq '(.runs[] |= del(.originalUriBaseIds, .automationDetails))
         (del(.uriBaseId) | .uri |= (sub("^(file://)?/+"; "") | split("/") | map(@uri) | join("/")))' \
   "$SARIF" > "$WIZ_OUT/sarif-upload.sarif"
 
-# The gate counts code and secret findings in changed files, and dependency findings only when
-# the PR touches the manifest they come from.
-GATE_COUNT=$(jq -L "$LIB" --arg threshold "$FAIL_ON_SEVERITY" '
-  include "common";
-  if $threshold == "NONE" then 0 else
-    . as $r
-    | [($r.sast + $r.secrets + [$r.deps[] | select($r.diff[.path] != null)])[]
-       | select((.severity | sev_rank) <= ($threshold | sev_rank))] | length
-  end' "$WIZ_OUT/report.json")
-echo "gate_count=$GATE_COUNT" >> "$GITHUB_OUTPUT"
+VERDICT=$(jq -r '.meta.verdict // ""' "$WIZ_OUT/report.json")
+echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
 
 jq -r '"Wiz report: \(.sast | length) code, \(.deps | length) dependency, \(.secrets | length) secret findings; \(.upgrades | length) upgrade recommendations"' "$WIZ_OUT/report.json"
-echo "Inline review comments: $(jq length "$WIZ_OUT/review-comments.json"); gate count: $GATE_COUNT"
+echo "Inline review comments: $(jq length "$WIZ_OUT/review-comments.json"); verdict: ${VERDICT:-n/a}"

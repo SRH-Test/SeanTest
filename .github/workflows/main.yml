@@ -16,11 +16,8 @@ concurrency:
 
 env:
   # Wiz CI/CD policies to evaluate. Include a SAST policy, or code findings are not returned.
+  # Each policy's severity threshold and audit/block mode decide whether the check fails.
   WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,SRH-Test
-  # Lowest severity that gets an inline review comment on the affected line
-  INLINE_MIN_SEVERITY: HIGH
-  # Fail the check when the PR has findings at or above this severity: CRITICAL, HIGH, MEDIUM, LOW or NONE
-  FAIL_ON_SEVERITY: NONE
 
 jobs:
   wiz-scan:
@@ -57,8 +54,11 @@ jobs:
             --sarif-output-file "$RUNNER_TEMP/wiz/wiz_result.sarif"
           EXIT_CODE=$?
           set -e
-          # 0 = passed, 4 = policy hits; anything else means the scan itself failed
-          if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 4 ]; then
+          # 0 = passed, 4 = blocked by a policy; anything else means the scan itself failed.
+          # Defer failing the job until the report and comments are posted.
+          if [ "$EXIT_CODE" -eq 4 ]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EXIT_CODE" -ne 0 ]; then
             echo "::error title=Wiz scan failed::wizcli exited with code $EXIT_CODE"
             echo "failed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -134,12 +134,12 @@ jobs:
             && echo "Posted $COUNT inline comments" \
             || echo "::warning title=Inline comments not posted::GitHub rejected the review; findings are still in the summary comment"
 
-      - name: Enforce severity gate
-        if: steps.scan.outputs.failed == 'true' || (env.FAIL_ON_SEVERITY != 'NONE' && steps.report.outputs.gate_count != '0')
+      - name: Enforce Wiz policies
+        if: steps.scan.outputs.failed == 'true' || steps.scan.outputs.blocked == 'true' || steps.report.outputs.verdict == 'FAILED_BY_POLICY'
         run: |
           if [ "${{ steps.scan.outputs.failed }}" = "true" ]; then
-            echo "::error::The Wiz scan did not complete"
+            echo "::error title=Wiz scan failed::The Wiz scan did not complete"
           else
-            echo "::error::${{ steps.report.outputs.gate_count }} finding(s) at or above $FAIL_ON_SEVERITY severity"
+            echo "::error title=Blocked by Wiz policy::Findings in this pull request violate a blocking Wiz policy. See the summary comment."
           fi
           exit 1
