@@ -15,6 +15,9 @@ const connection = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'test_db'
 });
+connection.on('error', () => {
+  console.error('Database connection error');
+});
 
 app.get('/api/user', apiUserRateLimit, (req, res) => {
   const userId = req.query.id;
