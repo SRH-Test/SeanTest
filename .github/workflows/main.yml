@@ -26,13 +26,24 @@ jobs:
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          # SAST findings are only returned when a SAST policy is evaluated; the defaults
+          # assigned to the service account cover vulnerabilities, secrets and licenses only.
+          WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,Default SAST policy
         # We run the scan and save it to a JSON file.
-        # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
+        # A non-zero exit for policy hits (4) still lets the workflow continue to the comment step.
         run: |
-          # Log the CLI version and any SAST/scanner-related options it supports
           "$RUNNER_TEMP/wizcli" version || true
-          "$RUNNER_TEMP/wizcli" dir scan --help 2>&1 || true
-          "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
+          set +e
+          "$RUNNER_TEMP/wizcli" dir scan --path . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif
+          EXIT_CODE=$?
+          set -e
+          echo "wizcli exit code: $EXIT_CODE"
+          # Any exit other than pass (0) or policy hits (4) means the scan itself failed, e.g. an
+          # unknown policy name. Fall back to the account's default policies so the comment still posts.
+          if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 4 ]; then
+            echo "::warning::wizcli scan with policies '$WIZ_POLICIES' failed (exit $EXIT_CODE); retrying with default policies (no SAST)"
+            "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
+          fi
 
       - name: Filter & Format Findings
         id: parse_findings
