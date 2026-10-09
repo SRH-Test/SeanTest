@@ -34,7 +34,9 @@ jobs:
         run: |
           "$RUNNER_TEMP/wizcli" version || true
           set +e
-          "$RUNNER_TEMP/wizcli" dir scan --path . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log"
+          # v1 command (`scan dir`); the legacy `dir scan` only supports vulnerability, secret and
+          # supply-chain policies, so it rejects SAST policies and never returns SAST results.
+          "$RUNNER_TEMP/wizcli" scan dir . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --json-output-file wiz_result.json --sarif-output-file wiz_result.sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log"
           EXIT_CODE=${PIPESTATUS[0]}
           set -e
           echo "wizcli exit code: $EXIT_CODE"
@@ -124,6 +126,7 @@ jobs:
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
           TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
+          echo "::notice title=parsed findings::vulns=$VULN_COUNT secrets=$SECRET_COUNT licenses=$LICENSE_COUNT sast=$SAST_COUNT | json result keys: $(jq -c '.result // {} | keys' wiz_result.json 2>&1 | cut -c1-300) | sarif: $(jq -c '[.runs[]? | {rules: (.tool.driver.rules // [] | length), results: (.results // [] | length), uris: ([(.results // [])[] | .locations[0].physicalLocation.artifactLocation.uri] | unique | .[0:8])}]' wiz_result.sarif 2>&1 | cut -c1-400)"
 
           # Initialize the Markdown comment with a hidden tracking ID
           echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
