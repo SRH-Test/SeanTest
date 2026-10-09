@@ -29,6 +29,9 @@ jobs:
         # We run the scan and save it to a JSON file.
         # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
         run: |
+          # Log the CLI version and any SAST/scanner-related options it supports
+          "$RUNNER_TEMP/wizcli" version || true
+          "$RUNNER_TEMP/wizcli" dir scan --help 2>&1 | grep -i -E 'sast|scanner|code|secret|vuln' || true
           "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
 
       - name: Filter & Format Findings
@@ -41,6 +44,13 @@ jobs:
           gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
           # Log SARIF summary to help diagnose SAST parsing
           jq -c '[.runs[]? | {rules: (.tool.driver.rules // [] | length), results: (.results // [] | length), uris: [(.results // [])[] | .locations[0].physicalLocation.artifactLocation.uri] | .[0:5]}]' wiz_result.sarif || true
+          # Log every SARIF result as uri | ruleId-prefix | rule tags, grouped and counted
+          jq -r '.runs[]? as $run | ($run.results // [])[] | . as $res
+            | ($run.tool.driver.rules // [] | map(select(.id == $res.ruleId)) | .[0] // {}) as $rule
+            | "\(.locations[0].physicalLocation.artifactLocation.uri) | \(.ruleId | sub("-[^-]*$"; "-*")) | \($rule.properties.tags // [] | join(","))"' wiz_result.sarif | sort | uniq -c || true
+          # Log one full non-CVE, non-secret result + rule so the SAST record shape is visible
+          jq -c '.runs[]? as $run | [($run.results // [])[] | select(.ruleId | test("^(CVE-|GHSA-|SECRET-)") | not)] | .[0] as $res
+            | {result: $res, rule: ($run.tool.driver.rules // [] | map(select(.id == $res.ruleId)) | .[0])}' wiz_result.sarif || true
           # Log the top-level structure to help diagnose schema differences
           jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
           jq -c '(.result // {}) | to_entries[] | select(.key | test("sast"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
@@ -68,12 +78,16 @@ jobs:
           # stable rule/weakness fields rather than assuming they are direct arrays under result.
           # SAST comes from the SARIF output: results[] joined to tool.driver.rules[] by ruleId.
           # Only files touched by this PR are reported.
+          # The SARIF also carries dependency CVEs and secrets (already reported from the JSON above),
+          # so drop those by rule ID and rule tags to keep the SAST table code-only.
           SAST=$(jq -c --slurpfile changed changed_files.json "[
             .runs[]? as \$run
             | (\$run.tool.driver.rules // []) as \$rules
             | (\$run.results // [])[]
             | . as \$res
             | (\$rules | map(select(.id == \$res.ruleId)) | .[0] // {}) as \$rule
+            | select((\$res.ruleId // \"\") | test(\"^(CVE-|GHSA-|SECRET-)\"; \"i\") | not)
+            | select((\$rule.properties.tags // []) | map(ascii_downcase) | any(. == \"secret\" or . == \"vulnerability\" or . == \"license\") | not)
             | ((\$rule.properties.\"security-severity\" // null) | if . == null then null else tonumber end) as \$score
             | (\$res.locations[0].physicalLocation // {}) as \$loc
             | {
