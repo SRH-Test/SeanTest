@@ -1,5 +1,6 @@
 const express = require('express');
 const mysql = require('mysql2');
+const { rateLimit } = require('express-rate-limit');
 
 const requiredConfig = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
 const missingConfig = requiredConfig.filter((key) => !process.env[key]);
@@ -15,6 +16,13 @@ const connection = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME
 });
+
+app.use('/api/user', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false
+}));
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (character) => ({
