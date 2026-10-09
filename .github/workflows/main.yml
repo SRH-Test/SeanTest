@@ -28,7 +28,7 @@ jobs:
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
           # SAST findings are only returned when a SAST policy is evaluated; the defaults
           # assigned to the service account cover vulnerabilities, secrets and licenses only.
-          WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,Default SAST policy
+          WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,SRH-Test
         # We run the scan and save it to a JSON file.
         # A non-zero exit for policy hits (4) still lets the workflow continue to the comment step.
         run: |
