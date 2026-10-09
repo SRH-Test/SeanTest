@@ -34,16 +34,20 @@ jobs:
         run: |
           "$RUNNER_TEMP/wizcli" version || true
           set +e
-          "$RUNNER_TEMP/wizcli" dir scan --path . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif
-          EXIT_CODE=$?
+          "$RUNNER_TEMP/wizcli" dir scan --path . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log"
+          EXIT_CODE=${PIPESTATUS[0]}
           set -e
           echo "wizcli exit code: $EXIT_CODE"
           # Any exit other than pass (0) or policy hits (4) means the scan itself failed, e.g. an
           # unknown policy name. Fall back to the account's default policies so the comment still posts.
           if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 4 ]; then
-            echo "::warning::wizcli scan with policies '$WIZ_POLICIES' failed (exit $EXIT_CODE); retrying with default policies (no SAST)"
-            "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
+            # Surface wizcli's error as an annotation (annotations can't span lines, so join them)
+            ERR=$(grep -i -E 'error|fail|invalid|unknown|not found|polic' "$RUNNER_TEMP/wizcli.log" | tail -n 5 | tr '\n' ' ' | cut -c1-900)
+            echo "::warning title=wizcli policy scan failed (exit $EXIT_CODE)::$ERR"
+            "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log" || true
           fi
+          # Record which policies were actually evaluated
+          echo "::notice title=wizcli policies::$(grep -E 'Evaluated Policies|Failed Policies' "$RUNNER_TEMP/wizcli.log" | tr -s ' \t' ' ' | tr '\n' ' ')"
 
       - name: Filter & Format Findings
         id: parse_findings
