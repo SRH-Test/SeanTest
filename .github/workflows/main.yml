@@ -31,7 +31,7 @@ jobs:
         run: |
           # Log the CLI version and any SAST/scanner-related options it supports
           "$RUNNER_TEMP/wizcli" version || true
-          "$RUNNER_TEMP/wizcli" dir scan --help 2>&1 | grep -i -E 'sast|scanner|code|secret|vuln' || true
+          "$RUNNER_TEMP/wizcli" dir scan --help 2>&1 || true
           "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
 
       - name: Filter & Format Findings

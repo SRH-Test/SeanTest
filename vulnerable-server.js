@@ -9,12 +9,23 @@
  * 1. Cross-Site Scripting (XSS)
  * 2. SQL Injection
  * 3. Null Dereference
+ * 4. OS Command Injection
+ * 5. Code Injection (eval)
+ * 6. Path Traversal
+ * 7. Server-Side Request Forgery (SSRF)
+ * 8. Open Redirect
+ * 9. Weak Password Hashing (MD5)
  *
  * DO NOT USE IN PRODUCTION
  */
 
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
+const crypto = require('crypto');
 const app = express();
 const port = 3000;
 
@@ -171,6 +182,82 @@ app.post('/update-settings', (req, res) => {
     theme: theme,
     emailNotifications: notifications
   });
+});
+
+/* ==============================
+   VULNERABILITY 4: OS Command Injection
+   ============================== */
+
+// VULNERABLE: User input concatenated into a shell command
+app.get('/ping', (req, res) => {
+  const host = req.query.host;
+  exec('ping -c 1 ' + host, (err, stdout, stderr) => {
+    res.send(`<pre>${stdout}${stderr}</pre>`);
+  });
+});
+
+/* ==============================
+   VULNERABILITY 5: Code Injection
+   ============================== */
+
+// VULNERABLE: User input evaluated as JavaScript
+app.post('/calculate', (req, res) => {
+  const expression = req.body.expression;
+  const result = eval(expression);
+  res.json({ result: result });
+});
+
+// VULNERABLE: User input compiled into a function
+app.post('/transform', (req, res) => {
+  const transform = new Function('value', req.body.code);
+  res.json({ result: transform(req.body.value) });
+});
+
+/* ==============================
+   VULNERABILITY 6: Path Traversal
+   ============================== */
+
+// VULNERABLE: User-controlled file path read from disk (e.g. ?file=../../etc/passwd)
+app.get('/download', (req, res) => {
+  const filePath = path.join(__dirname, 'uploads', req.query.file);
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.status(404).send('Not found');
+      return;
+    }
+    res.send(data);
+  });
+});
+
+/* ==============================
+   VULNERABILITY 7: Server-Side Request Forgery (SSRF)
+   ============================== */
+
+// VULNERABLE: Server fetches an arbitrary user-supplied URL
+app.get('/fetch', (req, res) => {
+  http.get(req.query.url, (response) => {
+    response.pipe(res);
+  });
+});
+
+/* ==============================
+   VULNERABILITY 8: Open Redirect
+   ============================== */
+
+// VULNERABLE: Redirects to an unvalidated user-supplied URL
+app.get('/redirect', (req, res) => {
+  res.redirect(req.query.next);
+});
+
+/* ==============================
+   VULNERABILITY 9: Weak Password Hashing
+   ============================== */
+
+// VULNERABLE: Unsalted MD5 used to hash passwords
+app.post('/register', (req, res) => {
+  const hash = crypto.createHash('md5').update(req.body.password).digest('hex');
+  db.run(`INSERT INTO users (username, password, email) VALUES ('${req.body.username}', '${hash}', '${req.body.email}')`);
+  res.json({ success: true });
 });
 
 app.listen(port, () => {
