@@ -110,7 +110,7 @@ def dependency_fixes:
     "| Policies | \(if ($r.meta.policies | length) == 0 then "—" else ($r.meta.policies | map("\(.name) (\(.enforcement | ascii_downcase))") | join(", ")) end) |",
     "| Gate | \(if $fail_on == "NONE" then "Report only" else "Fails on \($fail_on | sev_label) or worse" end) |",
     "| Wiz CLI | \($r.meta.cli_version // "n/a") |",
-    "| Scanned | \($r.meta.scanned_at // "n/a") |",
+    "| Scanned | \($r.meta.scanned_at // "n/a" | . as $t | try (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | strftime("%Y-%m-%d %H:%M UTC")) catch $t) |",
     "| Commit | `\($sha)` |",
     "",
     "</details>",
