@@ -61,11 +61,16 @@ jobs:
           LICENSES=$(jq -c "[(.result.licenses // [])[] | . + {sev: $SEV}]" wiz_result.json)
           LICENSE_COUNT=$(echo "$LICENSES" | jq 'length')
 
-          # SAST findings are returned in ruleMatches; retain sast as a fallback for older output schemas
+          # Wiz nests SAST records differently across CLI output schemas. Find records by their
+          # stable rule/weakness fields rather than assuming they are direct arrays under result.
           SAST=$(jq -c "[
-            ([.result.ruleMatches, .result.sast]
-              | map(if type == \"array\" then . elif type == \"object\" then ([.[] | select(type == \"array\")] | add // []) else [] end)
-              | add // [])[]
+            ..
+            | objects
+            | select(
+                ((.rule.id? // .ruleId? // \"\") | startswith(\"WS-\"))
+                or ((.weaknesses? | type) == \"array\" and (.finding? | type) == \"object")
+                or ((.codeLibraryLanguage? | type) == \"array\" and (.finding? | type) == \"object")
+              )
             | . as \$i
             | (\$i.rule // \$i) as \$r
             | {
