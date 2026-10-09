@@ -18,8 +18,9 @@ jobs:
 
       - name: Download WizCLI
         run: |
-          curl -Lo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
-          chmod +x wizcli
+          # Keep the binary outside the scanned workspace so its own dependencies are not reported
+          curl -Lo "$RUNNER_TEMP/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x "$RUNNER_TEMP/wizcli"
 
       - name: Scan directory & Save JSON
         env:
@@ -28,7 +29,7 @@ jobs:
         # We run the scan and save it to a JSON file.
         # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
         run: |
-          ./wizcli dir scan --path . --by-policy-hits DISABLED --output wiz_result.json,json --output wiz_result.sarif,sarif || true
+          "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits DISABLED --output wiz_result.json,json --output wiz_result.sarif,sarif || true
 
       - name: Filter & Format Findings
         id: parse_findings
@@ -38,6 +39,8 @@ jobs:
         run: |
           # Files touched by this PR; secrets in untouched, pre-existing files are not reported
           gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
+          # Log SARIF summary to help diagnose SAST parsing
+          jq -c '[.runs[]? | {rules: (.tool.driver.rules // [] | length), results: (.results // [] | length), uris: [(.results // [])[] | .locations[0].physicalLocation.artifactLocation.uri] | .[0:5]}]' wiz_result.sarif || true
           # Log the top-level structure to help diagnose schema differences
           jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
           jq -c '(.result // {}) | to_entries[] | select(.key | test("sast"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
@@ -53,7 +56,7 @@ jobs:
 
           # 2. Secrets
           SECRETS=$(jq -c --slurpfile changed changed_files.json "[(.result.secrets // [])[]
-            | . + {sev: $SEV, file: (.path // .filename // .filePath // .location.filePath // .location.path // \"\")}
+            | . + {sev: $SEV, file: (.path // .filename // .filePath // .location.filePath // .location.path // \"\") | sub(\"^(file://)?(\\\\./|/)+\"; \"\")}
             | select(.file as \$f | \$changed[0] | index(\$f))]" wiz_result.json)
           SECRET_COUNT=$(echo "$SECRETS" | jq 'length')
 
@@ -81,7 +84,7 @@ jobs:
                         ((\$rule.properties.tags // []) | map(ascii_upcase) | map(select(. == \"CRITICAL\" or . == \"HIGH\" or . == \"MEDIUM\" or . == \"LOW\" or . == \"INFORMATIONAL\")) | .[0]
                           // ({error: \"HIGH\", warning: \"MEDIUM\", note: \"LOW\"}[\$res.level // \$rule.defaultConfiguration.level // \"\"] // \"UNKNOWN\"))
                       end),
-                file: (\$loc.artifactLocation.uri // \"N/A\" | sub(\"^file://\"; \"\") | sub(\"^\\\\./\"; \"\")),
+                file: (\$loc.artifactLocation.uri // \"N/A\" | sub(\"^(file://)?(\\\\./|/)+\"; \"\")),
                 line: (\$loc.region.startLine // \"N/A\"),
                 cwe: ((\$rule.properties.tags // []) | map(select(test(\"^CWE-\"; \"i\"))) | join(\", \")),
                 status: ((\$res.suppressions // []) | if length == 0 then \"Reported\" else \"Ignored\" end)
@@ -96,6 +99,8 @@ jobs:
           # Initialize the Markdown comment with a hidden tracking ID
           echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
           echo "### 🛡️ Wiz Security Scan Results" >> comment.md
+          echo "Status: **Action Required**" >> comment.md
+          echo "Found **$TOTAL_FINDINGS** findings in files changed by this PR." >> comment.md
           echo "---" >> comment.md
 
           # Format SAST Table (Static Code Analysis)
