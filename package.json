@@ -1,0 +1,9 @@
+{
+  "name": "test-server",
+  "version": "0.21.1",
+  "main": "app.js",
+  "dependencies": {
+    "express": "*",
+    "mysql2": "*"
+  }
+}
