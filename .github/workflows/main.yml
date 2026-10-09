@@ -97,7 +97,21 @@ jobs:
           # Only files touched by this PR are reported.
           # The SARIF also carries dependency CVEs and secrets (already reported from the JSON above),
           # so drop those by rule ID and rule tags to keep the SAST table code-only.
-          SAST=$(jq -c --slurpfile changed changed_files.json "[
+          # Wiz's SARIF rules carry no CWE IDs; those only exist in the JSON's nested result.sast.
+          # Rather than depend on that nesting, map each SARIF SAST rule ID to the CWEs found in any
+          # JSON object that mentions exactly that one rule ID (so parent containers are skipped).
+          SAST_RULE_IDS=$(jq -c '[.runs[]?.tool.driver.rules[]?.id | select(test("^(CVE-|GHSA-|SECRET-)"; "i") | not)] | unique' wiz_result.sarif)
+          CWE_MAP=$(jq -c --argjson ids "$SAST_RULE_IDS" '
+            [(.result.sast // empty) | .. | objects | tostring
+              | . as $s
+              | {ids: [$ids[] | select(. as $i | $s | contains("\"" + $i + "\""))],
+                 cwes: ([scan("(?i)cwe[-_ ]?([0-9]+)") | "CWE-" + .[0]] | unique)}
+              | select((.ids | length) == 1 and (.cwes | length) > 0)]
+            | reduce .[] as $e ({}; .[$e.ids[0]] += $e.cwes) | map_values(unique)' wiz_result.json 2>/dev/null || true)
+          [ -n "$CWE_MAP" ] || CWE_MAP='{}'
+          echo "::notice title=SAST CWE map::$(echo "$SAST_RULE_IDS" | jq length) SAST rules, $(echo "$CWE_MAP" | jq length) with CWEs: $(echo "$CWE_MAP" | cut -c1-500)"
+
+          SAST=$(jq -c --slurpfile changed changed_files.json --argjson cwemap "$CWE_MAP" "[
             .runs[]? as \$run
             | (\$run.tool.driver.rules // []) as \$rules
             | (\$run.results // [])[]
@@ -119,6 +133,7 @@ jobs:
                 line: (\$loc.region.startLine // \"N/A\"),
                 cwe: (([\$rule.properties, \$rule.relationships, \$res.properties] | tostring | [scan(\"(?i)cwe[-_/ ]?([0-9]+)\") | \"CWE-\" + .[0]])
                       + [(\$rule.relationships // [])[] | select((.target.toolComponent.name // \"\") | test(\"cwe\"; \"i\")) | \"CWE-\" + (.target.id | tostring | sub(\"(?i)^cwe-?\"; \"\"))]
+                      + (\$cwemap[\$res.ruleId // \"\"] // [])
                       | unique | join(\", \")),
                 status: ((\$res.suppressions // []) | if length == 0 then \"Reported\" else \"Ignored\" end)
               }
@@ -126,8 +141,6 @@ jobs:
           ]
           | unique_by([.name, .file, .line])
           | sort_by((.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 elif . == \"LOW\" then 3 else 4 end), .file, .line)" wiz_result.sarif)
-          # Log one SAST rule's metadata so the CWE field location can be confirmed
-          echo "::notice title=sample SAST rule::$(jq -c '[.runs[]? | (.tool.driver.rules // [])[] | select(.id | test("^(CVE-|GHSA-|SECRET-)"; "i") | not)] | .[0] | {id, properties, relationships}' wiz_result.sarif 2>&1 | cut -c1-700)"
           SAST=${SAST:-[]}
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
