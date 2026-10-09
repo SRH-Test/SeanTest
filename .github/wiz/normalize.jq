@@ -75,18 +75,6 @@ include "common";
        policies: [(.failedPolicyMatches // [])[] | (.policy.name? // empty)]}
   ] | sort_by((.severity | sev_rank), .package, .id)) as $deps
 
-# One upgrade recommendation per package: the lowest version that fixes all its fixable CVEs.
-# A "fix" older than the installed version means the fix lives in a parent dependency.
-| ([$deps | group_by([.package, .version, .path])[] as $g
-    | ([$g[].fixed | values | split(",") | .[0] | gsub("^\\s+|\\s+$"; "") | select(length > 0)]
-       | max_by(version_key)) as $target
-    | {package: $g[0].package, version: $g[0].version, path: $g[0].path, target: $target,
-       count: ($g | length), unfixed: ([$g[] | select(.fixed == null)] | length),
-       worst: ($g | worst_severity),
-       by_severity: ($g | group_by(.severity) | map({key: .[0].severity, value: length}) | from_entries),
-       transitive: ($target != null and (($target | version_key) <= ($g[0].version | version_key)))}
-  ] | sort_by((.worst | sev_rank), -.count)) as $upgrades
-
 | ([($w.result.secrets // [])[]
     | {title: (.description // .ruleName // "Secret"), file: ((.path // .filename // "") | rel_path),
        line: ((.lineNumber // .line // null) | if . == null then null else (tonumber? // null) end),
@@ -105,5 +93,5 @@ include "common";
                    | select(.deploymentLifecycle == "CLI") | .enforcementMethod] | .[0] // "AUDIT")}],
       changed_files: ($diff | length)
     },
-    diff: $diff, sast: $sast, deps: $deps, upgrades: $upgrades, secrets: $secrets
+    diff: $diff, sast: $sast, deps: $deps, secrets: $secrets
   }

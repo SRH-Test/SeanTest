@@ -38,33 +38,9 @@ def verdict_line:
    "FAILED_BY_POLICY": "❌ **Failed**: findings violate blocking policies"}[.meta.verdict // ""]
   // "ℹ️ **Scan complete**";
 
-def code_fixes:
-  [.sast[] | . + {group: (guidance_for(.cwes)[0] // "Other findings")}]
-  | group_by(.group)
-  | map({name: .[0].group, guide: guidance_for([.[].cwes[]]), cwes: ([.[].cwes[]] | unique),
-         count: length, worst: worst_severity})
-  | sort_by((.worst | sev_rank), -.count)
-  | map("- \(.worst | sev_icon) **\(.name)**\(if (.cwes | length) > 0 then " (\(.cwes | map(cwe_link) | join(", ")))" else "" end): "
-        + "\(plural(.count; "finding")). \(if .guide then .guide[1] else "See each finding in Wiz for remediation guidance." end)");
-
-def dependency_fixes:
-  .upgrades | map(
-    if .transitive then
-      "- \(.worst | sev_icon) **`\(.package)` \(.version)**: \(plural(.count; "vulnerability")) fixed only through a parent dependency. Upgrade the package that pulls it in, or pin a patched version with an override."
-    elif .target == null then
-      "- \(.worst | sev_icon) **`\(.package)` \(.version)**: \(plural(.count; "vulnerability")) with no fixed version yet. Consider replacing the package or mitigating the affected code paths."
-    else
-      "- \(.worst | sev_icon) **Upgrade `\(.package)` \(.version) → \(.target)** in `\(.path)`: fixes "
-      + (if .unfixed == 0 then (if .count == 1 then "1 vulnerability" else "all \(plural(.count; "vulnerability"))" end)
-         else "\(.count - .unfixed) of \(plural(.count; "vulnerability"))" end)
-      + " (\(.by_severity | to_entries | sort_by(.key | sev_rank) | map("\(.value) \(.key | sev_label)") | join(", ")))."
-    end);
-
 . as $r
 | ($r.meta.policies | map({key: .name, value: .enforcement}) | from_entries) as $mode
 | ($r.sast + $r.deps + $r.secrets) as $all
-| ($r | code_fixes) as $code_fixes
-| ($r | dependency_fixes) as $dep_fixes
 | [
     "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->",
     "## 🛡️ Wiz Security Scan",
@@ -81,13 +57,8 @@ def dependency_fixes:
       count_row("🔑 Secrets"; $r.secrets),
       ""
     ]
-    + (if ($code_fixes + $dep_fixes | length) == 0 then [] else
-        ["### 🔧 Recommended fixes", ""]
-        + (if ($code_fixes | length) > 0 then ["**Code**", ""] + $code_fixes + [""] else [] end)
-        + (if ($dep_fixes | length) > 0 then ["**Dependencies**", ""] + $dep_fixes + [""] else [] end)
-        + (if any($r.sast[]; (.severity | sev_rank) <= ($inline_min | sev_rank))
-           then ["_\($inline_min | sev_label)-severity and worse code findings also have inline review comments on the affected lines._", ""] else [] end)
-      end)
+    + (if any($r.sast[]; (.severity | sev_rank) <= ($inline_min | sev_rank))
+       then ["_\($inline_min | sev_label)-severity and worse code findings also have inline review comments with remediation on the affected lines._", ""] else [] end)
     + ["### 📋 Findings", ""]
     + section("🧬 Code security (SAST)"; $r.sast;
         ["| Severity | Finding | Location | CWE | Policy |", "|---|---|---|---|---|"];

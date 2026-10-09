@@ -52,5 +52,5 @@ jq '(.runs[] |= del(.originalUriBaseIds, .automationDetails))
 VERDICT=$(jq -r '.meta.verdict // ""' "$WIZ_OUT/report.json")
 echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
 
-jq -r '"Wiz report: \(.sast | length) code, \(.deps | length) dependency, \(.secrets | length) secret findings; \(.upgrades | length) upgrade recommendations"' "$WIZ_OUT/report.json"
+jq -r '"Wiz report: \(.sast | length) code, \(.deps | length) dependency, \(.secrets | length) secret findings"' "$WIZ_OUT/report.json"
 echo "Inline review comments: $(jq length "$WIZ_OUT/review-comments.json"); verdict: ${VERDICT:-n/a}"

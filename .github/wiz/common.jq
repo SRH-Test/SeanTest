@@ -4,11 +4,9 @@ def sev_rank: {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL":
 def norm_sev: (. // "UNKNOWN") | ascii_upcase | if . == "INFO" then "INFORMATIONAL" else . end;
 def sev_icon: {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🔵", "INFORMATIONAL": "⚪"}[.] // "⚫";
 def sev_label: {"CRITICAL": "Critical", "HIGH": "High", "MEDIUM": "Medium", "LOW": "Low", "INFORMATIONAL": "Info"}[.] // "Unknown";
-def worst_severity: map(.severity) | min_by(sev_rank);
 
 def rel_path: sub("^(file://)?(\\./|/)+"; "");
 def url_path: split("/") | map(@uri) | join("/");
-def version_key: [scan("[0-9]+") | tonumber];
 def plural($n; $word):
   "\($n) \(if $n == 1 then $word elif ($word | endswith("y")) then ($word | rtrimstr("y")) + "ies" else $word + "s" end)";
 
