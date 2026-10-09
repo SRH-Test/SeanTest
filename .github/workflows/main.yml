@@ -4,211 +4,142 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Required permissions for GITHUB_TOKEN to write and update PR comments
 permissions:
-  pull-requests: write
   contents: read
+  pull-requests: write    # summary comment and inline review comments
+  security-events: write  # upload SARIF to GitHub code scanning
+  actions: read           # needed by the SARIF upload on private repositories
+
+concurrency:
+  group: wiz-scan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # Wiz CI/CD policies to evaluate. Include a SAST policy, or code findings are not returned.
+  WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,SRH-Test
+  # Lowest severity that gets an inline review comment on the affected line
+  INLINE_MIN_SEVERITY: HIGH
+  # Fail the check when the PR has findings at or above this severity: CRITICAL, HIGH, MEDIUM, LOW or NONE
+  FAIL_ON_SEVERITY: NONE
 
 jobs:
   wiz-scan:
+    name: Wiz scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Check out code
+        uses: actions/checkout@v5
 
-      - name: Download WizCLI
+      - name: Install Wiz CLI
         run: |
           # Keep the binary outside the scanned workspace so its own dependencies are not reported
-          curl -Lo "$RUNNER_TEMP/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          curl -fsSL -o "$RUNNER_TEMP/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x "$RUNNER_TEMP/wizcli"
+          "$RUNNER_TEMP/wizcli" version
 
-      - name: Scan directory & Save JSON
+      - name: Run Wiz scan
+        id: scan
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-          # SAST findings are only returned when a SAST policy is evaluated; the defaults
-          # assigned to the service account cover vulnerabilities, secrets and licenses only.
-          WIZ_POLICIES: Default vulnerabilities policy,Default secrets policy,Default software license policy,SRH-Test
-        # We run the scan and save it to a JSON file.
-        # A non-zero exit for policy hits (4) still lets the workflow continue to the comment step.
         run: |
-          "$RUNNER_TEMP/wizcli" version || true
+          mkdir -p "$RUNNER_TEMP/wiz"
           set +e
-          # v1 command (`scan dir`); the legacy `dir scan` only supports vulnerability, secret and
-          # supply-chain policies, so it rejects SAST policies and never returns SAST results.
-          "$RUNNER_TEMP/wizcli" scan dir . --policies "$WIZ_POLICIES" --by-policy-hits="DISABLED" --json-output-file wiz_result.json --sarif-output-file wiz_result.sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log"
-          EXIT_CODE=${PIPESTATUS[0]}
+          "$RUNNER_TEMP/wizcli" scan dir . \
+            --policies "$WIZ_POLICIES" \
+            --by-policy-hits=DISABLED \
+            --name "github:${{ github.repository }}#${{ github.event.pull_request.number }}" \
+            --tags "github/repository=${{ github.repository }}" \
+            --tags "github/pull-request=${{ github.event.pull_request.number }}" \
+            --tags "github/sha=${{ github.event.pull_request.head.sha }}" \
+            --no-color --no-style \
+            --json-output-file "$RUNNER_TEMP/wiz/wiz_result.json" \
+            --sarif-output-file "$RUNNER_TEMP/wiz/wiz_result.sarif"
+          EXIT_CODE=$?
           set -e
-          echo "wizcli exit code: $EXIT_CODE"
-          # Any exit other than pass (0) or policy hits (4) means the scan itself failed, e.g. an
-          # unknown policy name. Fall back to the account's default policies so the comment still posts.
+          # 0 = passed, 4 = policy hits; anything else means the scan itself failed
           if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 4 ]; then
-            # Surface wizcli's error as an annotation (annotations can't span lines, so join them)
-            ERR=$(grep -i -E 'error|fail|invalid|unknown|not found|polic' "$RUNNER_TEMP/wizcli.log" | tail -n 5 | tr '\n' ' ' | cut -c1-900)
-            echo "::warning title=wizcli policy scan failed (exit $EXIT_CODE)::$ERR"
-            "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif 2>&1 | tee "$RUNNER_TEMP/wizcli.log" || true
+            echo "::error title=Wiz scan failed::wizcli exited with code $EXIT_CODE"
+            echo "failed=true" >> "$GITHUB_OUTPUT"
           fi
-          # Record which policies were actually evaluated
-          echo "::notice title=wizcli policies::$(grep -E 'Evaluated Policies|Failed Policies' "$RUNNER_TEMP/wizcli.log" | tr -s ' \t' ' ' | tr '\n' ' ')"
 
-      - name: Filter & Format Findings
-        id: parse_findings
+      - name: Build report
+        id: report
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SERVER_URL: ${{ github.server_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # Files touched by this PR; secrets in untouched, pre-existing files are not reported
-          gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
-          # Log SARIF summary to help diagnose SAST parsing
-          jq -c '[.runs[]? | {rules: (.tool.driver.rules // [] | length), results: (.results // [] | length), uris: [(.results // [])[] | .locations[0].physicalLocation.artifactLocation.uri] | .[0:5]}]' wiz_result.sarif || true
-          # Log every SARIF result as uri | ruleId-prefix | rule tags, grouped and counted
-          jq -r '.runs[]? as $run | ($run.results // [])[] | . as $res
-            | ($run.tool.driver.rules // [] | map(select(.id == $res.ruleId)) | .[0] // {}) as $rule
-            | "\(.locations[0].physicalLocation.artifactLocation.uri) | \(.ruleId | sub("-[^-]*$"; "-*")) | \($rule.properties.tags // [] | join(","))"' wiz_result.sarif | sort | uniq -c || true
-          # Log one full non-CVE, non-secret result + rule so the SAST record shape is visible
-          jq -c '.runs[]? as $run | [($run.results // [])[] | select(.ruleId | test("^(CVE-|GHSA-|SECRET-)") | not)] | .[0] as $res
-            | {result: $res, rule: ($run.tool.driver.rules // [] | map(select(.id == $res.ruleId)) | .[0])}' wiz_result.sarif || true
-          # Log the top-level structure to help diagnose schema differences
-          jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
-          jq -c '(.result // {}) | to_entries[] | select(.key | test("sast"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
+          export WIZ_OUT="$RUNNER_TEMP/wiz"
+          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" | jq -s 'add // []' > "$WIZ_OUT/pr_files.json"
+          bash .github/wiz/report.sh
+          cat "$WIZ_OUT/comment.md" >> "$GITHUB_STEP_SUMMARY"
+          [ -s "$WIZ_OUT/sarif-upload.sarif" ] && echo "sarif=true" >> "$GITHUB_OUTPUT" || true
 
-          SEV='(.severity // "UNKNOWN" | ascii_upcase)'
+      - name: Upload results to GitHub code scanning
+        if: steps.report.outputs.sarif == 'true'
+        continue-on-error: true  # code scanning must be enabled (GitHub Advanced Security on private repos)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ runner.temp }}/wiz/sarif-upload.sarif
+          category: wiz
 
-          # 1. Vulnerabilities live under libraries[] and osPackages[] (all severities)
-          VULNS=$(jq -c "[ ((.result.libraries // [])[], (.result.osPackages // [])[]) as \$p
-            | (\$p.vulnerabilities // [])[]
-            | . + {pkgName: \$p.name, pkgVersion: \$p.version, sev: $SEV} ]
-            | sort_by(.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 else 3 end)" wiz_result.json)
-          VULN_COUNT=$(echo "$VULNS" | jq 'length')
-
-          # 2. Secrets
-          SECRETS=$(jq -c --slurpfile changed changed_files.json "[(.result.secrets // [])[]
-            | . + {sev: $SEV, file: (.path // .filename // .filePath // .location.filePath // .location.path // \"\") | sub(\"^(file://)?(\\\\./|/)+\"; \"\")}
-            | select(.file as \$f | \$changed[0] | index(\$f))]" wiz_result.json)
-          SECRET_COUNT=$(echo "$SECRETS" | jq 'length')
-
-          # 3. License issues
-          LICENSES=$(jq -c "[(.result.licenses // [])[] | . + {sev: $SEV}]" wiz_result.json)
-          LICENSE_COUNT=$(echo "$LICENSES" | jq 'length')
-
-          # Wiz nests SAST records differently across CLI output schemas. Find records by their
-          # stable rule/weakness fields rather than assuming they are direct arrays under result.
-          # SAST comes from the SARIF output: results[] joined to tool.driver.rules[] by ruleId.
-          # Only files touched by this PR are reported.
-          # The SARIF also carries dependency CVEs and secrets (already reported from the JSON above),
-          # so drop those by rule ID and rule tags to keep the SAST table code-only.
-          # Wiz's SARIF rules carry no CWE IDs; those only exist in the JSON's nested result.sast.
-          # Rather than depend on that nesting, map each SARIF SAST rule ID to the CWEs found in any
-          # JSON object that mentions exactly that one rule ID (so parent containers are skipped).
-          SAST_RULE_IDS=$(jq -c '[.runs[]?.tool.driver.rules[]?.id | select(test("^(CVE-|GHSA-|SECRET-)"; "i") | not)] | unique' wiz_result.sarif)
-          CWE_MAP=$(jq -c --argjson ids "$SAST_RULE_IDS" '
-            [(.result.sast // empty) | .. | objects | tostring
-              | . as $s
-              | {ids: [$ids[] | select(. as $i | $s | contains("\"" + $i + "\""))],
-                 cwes: ([scan("(?i)cwe[-_ ]?([0-9]+)") | "CWE-" + .[0]] | unique)}
-              | select((.ids | length) == 1 and (.cwes | length) > 0)]
-            | reduce .[] as $e ({}; .[$e.ids[0]] += $e.cwes) | map_values(unique)' wiz_result.json 2>/dev/null || true)
-          [ -n "$CWE_MAP" ] || CWE_MAP='{}'
-          echo "::notice title=SAST CWE map::$(echo "$SAST_RULE_IDS" | jq length) SAST rules, $(echo "$CWE_MAP" | jq length) with CWEs: $(echo "$CWE_MAP" | cut -c1-500)"
-
-          SAST=$(jq -c --slurpfile changed changed_files.json --argjson cwemap "$CWE_MAP" "[
-            .runs[]? as \$run
-            | (\$run.tool.driver.rules // []) as \$rules
-            | (\$run.results // [])[]
-            | . as \$res
-            | (\$rules | map(select(.id == \$res.ruleId)) | .[0] // {}) as \$rule
-            | select((\$res.ruleId // \"\") | test(\"^(CVE-|GHSA-|SECRET-)\"; \"i\") | not)
-            | select((\$rule.properties.tags // []) | map(ascii_downcase) | any(. == \"secret\" or . == \"vulnerability\" or . == \"license\") | not)
-            | ((\$rule.properties.\"security-severity\" // null) | if . == null then null else tonumber end) as \$score
-            | (\$res.locations[0].physicalLocation // {}) as \$loc
-            | {
-                name: (\$rule.shortDescription.text // \$rule.name // \$res.message.text // \$res.ruleId // \"SAST Finding\"),
-                sev: (if \$score != null then
-                        (if \$score >= 9 then \"CRITICAL\" elif \$score >= 7 then \"HIGH\" elif \$score >= 4 then \"MEDIUM\" else \"LOW\" end)
-                      else
-                        ((\$rule.properties.tags // []) | map(ascii_upcase) | map(select(. == \"CRITICAL\" or . == \"HIGH\" or . == \"MEDIUM\" or . == \"LOW\" or . == \"INFORMATIONAL\")) | .[0]
-                          // ({error: \"HIGH\", warning: \"MEDIUM\", note: \"LOW\"}[\$res.level // \$rule.defaultConfiguration.level // \"\"] // \"UNKNOWN\"))
-                      end),
-                file: (\$loc.artifactLocation.uri // \"N/A\" | sub(\"^(file://)?(\\\\./|/)+\"; \"\")),
-                line: (\$loc.region.startLine // \"N/A\"),
-                cwe: (([\$rule.properties, \$rule.relationships, \$res.properties] | tostring | [scan(\"(?i)cwe[-_/ ]?([0-9]+)\") | \"CWE-\" + .[0]])
-                      + [(\$rule.relationships // [])[] | select((.target.toolComponent.name // \"\") | test(\"cwe\"; \"i\")) | \"CWE-\" + (.target.id | tostring | sub(\"(?i)^cwe-?\"; \"\"))]
-                      + (\$cwemap[\$res.ruleId // \"\"] // [])
-                      | unique | join(\", \")),
-                status: ((\$res.suppressions // []) | if length == 0 then \"Reported\" else \"Ignored\" end)
-              }
-            | select(.file as \$f | \$changed[0] | index(\$f))
-          ]
-          | unique_by([.name, .file, .line])
-          | sort_by((.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 elif . == \"LOW\" then 3 else 4 end), .file, .line)" wiz_result.sarif)
-          SAST=${SAST:-[]}
-          SAST_COUNT=$(echo "$SAST" | jq 'length')
-
-          TOTAL_FINDINGS=$((VULN_COUNT + SECRET_COUNT + LICENSE_COUNT + SAST_COUNT))
-          echo "::notice title=parsed findings::vulns=$VULN_COUNT secrets=$SECRET_COUNT licenses=$LICENSE_COUNT sast=$SAST_COUNT | json result keys: $(jq -c '.result // {} | keys' wiz_result.json 2>&1 | cut -c1-300) | sarif: $(jq -c '[.runs[]? | {rules: (.tool.driver.rules // [] | length), results: (.results // [] | length), uris: ([(.results // [])[] | .locations[0].physicalLocation.artifactLocation.uri] | unique | .[0:8])}]' wiz_result.sarif 2>&1 | cut -c1-400)"
-
-          # Initialize the Markdown comment with a hidden tracking ID
-          echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
-          echo "### 🛡️ Wiz Security Scan Results" >> comment.md
-          echo "Status: **Action Required**" >> comment.md
-          echo "Found **$TOTAL_FINDINGS** findings in files changed by this PR." >> comment.md
-          echo "---" >> comment.md
-
-          # Format SAST Table (Static Code Analysis)
-          if [ "$SAST_COUNT" -gt 0 ]; then
-            echo "#### 🛡️ Code Security (SAST)" >> comment.md
-            echo "| Vulnerability / Rule | File Path | Line | Severity | CWE | Policy Status |" >> comment.md
-            echo "|---|---|---|---|---|---|" >> comment.md
-            echo "$SAST" | jq -r '.[] | "| \(.name) | \(.file) | \(.line) | **\(.sev)** | \(if .cwe == "" then "N/A" else .cwe end) | \(.status) |"' >> comment.md
-            echo "" >> comment.md
-          fi
-
-          # Format Vulnerabilities Table (Libraries)
-          if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "#### 📦 Dependency Vulnerabilities (Libraries)" >> comment.md
-            echo "| Name | CVE | Severity | Version | Fixed Version |" >> comment.md
-            echo "|---|---|---|---|---|" >> comment.md
-            echo "$VULNS" | jq -r '.[] | "| \(.pkgName // .name) | \(.name // .id) | **\(.sev)** | \(.pkgVersion // "N/A") | \(.fixedVersion // "N/A") |"' >> comment.md
-            echo "" >> comment.md
-          fi
-
-          # Format Secrets Table
-          if [ "$SECRET_COUNT" -gt 0 ]; then
-            echo "#### 🔑 Exposed Secrets" >> comment.md
-            echo "| Description | Path | Severity | Snippet |" >> comment.md
-            echo "|---|---|---|---|" >> comment.md
-            echo "$SECRETS" | jq -r '.[] | "| \(.ruleName // .description) | \(.file) | **\(.sev)** | `\(.snippet // .location.snippet // "REDACTED")` |"' >> comment.md
-            echo "" >> comment.md
-          fi
-
-          # Format Licenses Table
-          if [ "$LICENSE_COUNT" -gt 0 ]; then
-            echo "#### 📜 Restrictive Licenses" >> comment.md
-            echo "| Rule Name | Component | Severity | Licenses |" >> comment.md
-            echo "|---|---|---|---|" >> comment.md
-            echo "$LICENSES" | jq -r '.[] | "| \(.ruleName) | \(.componentName) v\(.componentVersion) | **\(.sev)** | \(.licenses // "N/A") |"' >> comment.md
-            echo "" >> comment.md
-          fi
-
-          # Fallback if no issues of interest were found
-          if [ "$TOTAL_FINDINGS" -eq 0 ]; then
-            echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
-            echo "✨ **No issues found.** Great job!" >> comment.md
-          fi
-
-      - name: Post or Update PR Comment
+      - name: Post summary comment
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          # Use the REST API to find if we've already commented on this PR. It returns the numeric
-          # comment ID the PATCH endpoint needs; `gh pr view --json comments` returns GraphQL node IDs.
-          EXISTING_COMMENT_ID=$(gh api --paginate "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --jq '.[] | select(.body | contains("<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->")) | .id' | head -n 1)
-
+          # The REST API returns the numeric comment ID the PATCH endpoint needs
+          EXISTING_COMMENT_ID=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.body | contains("<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->")) | .id' | head -n 1)
           if [ -n "$EXISTING_COMMENT_ID" ]; then
-            echo "Updating existing comment (ID: $EXISTING_COMMENT_ID)..."
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$EXISTING_COMMENT_ID" -F body=@comment.md
+            gh api -X PATCH "repos/$REPO/issues/comments/$EXISTING_COMMENT_ID" -F body=@"$RUNNER_TEMP/wiz/comment.md" > /dev/null
+            echo "Updated summary comment $EXISTING_COMMENT_ID"
           else
-            echo "No existing comment found. Creating a new one..."
-            gh pr comment "$PR_NUMBER" --body-file comment.md
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$RUNNER_TEMP/wiz/comment.md" > /dev/null
+            echo "Created summary comment"
           fi
+
+      - name: Post inline review comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          WIZ_OUT="$RUNNER_TEMP/wiz"
+          # Skip findings that already have an inline comment from an earlier run
+          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/comments" \
+            --jq '.[].body | capture("<!-- wiz-finding:(?<key>[^>]*) -->") | .key' > "$WIZ_OUT/seen.txt" || true
+          jq --rawfile seen "$WIZ_OUT/seen.txt" '
+            ($seen | split("\n")) as $seen
+            | [.[] | select((.body | capture("<!-- wiz-finding:(?<key>[^>]*) -->").key) as $key | any($seen[]; . == $key) | not)]
+          ' "$WIZ_OUT/review-comments.json" > "$WIZ_OUT/new-comments.json"
+          COUNT=$(jq length "$WIZ_OUT/new-comments.json")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No new inline findings"
+            exit 0
+          fi
+          jq -n --arg sha "$HEAD_SHA" --slurpfile comments "$WIZ_OUT/new-comments.json" '{
+            commit_id: $sha,
+            event: "COMMENT",
+            body: "🛡️ **Wiz Security Scan** flagged \($comments[0] | length) code \(if ($comments[0] | length) == 1 then "issue" else "issues" end) on lines changed in this pull request. See the summary comment for the full report.",
+            comments: $comments[0]
+          }' > "$WIZ_OUT/review.json"
+          gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$WIZ_OUT/review.json" > /dev/null \
+            && echo "Posted $COUNT inline comments" \
+            || echo "::warning title=Inline comments not posted::GitHub rejected the review; findings are still in the summary comment"
+
+      - name: Enforce severity gate
+        if: steps.scan.outputs.failed == 'true' || (env.FAIL_ON_SEVERITY != 'NONE' && steps.report.outputs.gate_count != '0')
+        run: |
+          if [ "${{ steps.scan.outputs.failed }}" = "true" ]; then
+            echo "::error::The Wiz scan did not complete"
+          else
+            echo "::error::${{ steps.report.outputs.gate_count }} finding(s) at or above $FAIL_ON_SEVERITY severity"
+          fi
+          exit 1
