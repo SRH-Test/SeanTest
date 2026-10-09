@@ -29,7 +29,7 @@ jobs:
         # We run the scan and save it to a JSON file.
         # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
         run: |
-          "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits DISABLED --output wiz_result.json,json --output wiz_result.sarif,sarif || true
+          "$RUNNER_TEMP/wizcli" dir scan --path . --by-policy-hits="DISABLED" --output wiz_result.json,json --output wiz_result.sarif,sarif || true
 
       - name: Filter & Format Findings
         id: parse_findings
