@@ -1,10 +1,13 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const mysql = require('mysql2');
 const app = express();
-const apiRequestCounts = new Map();
-const apiRequestLimit = 60;
-const apiRequestWindowMs = 60_000;
-const maxTrackedClients = 10_000;
+const apiUserRateLimit = rateLimit({
+  windowMs: 60_000,
+  limit: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+});
 
 const connection = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
@@ -13,26 +16,7 @@ const connection = mysql.createConnection({
   database: process.env.DB_NAME || 'test_db'
 });
 
-function rateLimitApiUserLookup(req, res, next) {
-  const now = Date.now();
-  let requestWindow = apiRequestCounts.get(req.ip);
-
-  if (!requestWindow || now >= requestWindow.resetAt) {
-    if (apiRequestCounts.size >= maxTrackedClients) {
-      apiRequestCounts.delete(apiRequestCounts.keys().next().value);
-    }
-    requestWindow = { count: 0, resetAt: now + apiRequestWindowMs };
-    apiRequestCounts.set(req.ip, requestWindow);
-  }
-
-  requestWindow.count += 1;
-  if (requestWindow.count > apiRequestLimit) {
-    return res.status(429).send('Too many requests');
-  }
-  return next();
-}
-
-app.get('/api/user', rateLimitApiUserLookup, (req, res) => {
+app.get('/api/user', apiUserRateLimit, (req, res) => {
   const userId = req.query.id;
   if (typeof userId !== 'string') {
     return res.status(400).send('A user ID is required');
