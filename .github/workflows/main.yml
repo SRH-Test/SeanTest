@@ -90,8 +90,6 @@ jobs:
           # Initialize the Markdown comment with a hidden tracking ID
           echo "<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->" > comment.md
           echo "### 🛡️ Wiz Security Scan Results" >> comment.md
-          echo "Status: **Action Required**" >> comment.md
-          echo "Found **$TOTAL_FINDINGS** findings across all scanners." >> comment.md
           echo "---" >> comment.md
 
           # Format SAST Table (Static Code Analysis)
