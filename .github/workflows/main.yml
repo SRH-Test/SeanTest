@@ -164,8 +164,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Use gh to find if we've already commented on this PR
-          EXISTING_COMMENT_ID=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments[] | select(.body | contains("<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->")) | .id' | head -n 1)
+          # Use the REST API to find if we've already commented on this PR. It returns the numeric
+          # comment ID the PATCH endpoint needs; `gh pr view --json comments` returns GraphQL node IDs.
+          EXISTING_COMMENT_ID=$(gh api --paginate "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --jq '.[] | select(.body | contains("<!-- ID: WIZ_SECURITY_SCAN_COMMENT_MARKER -->")) | .id' | head -n 1)
 
           if [ -n "$EXISTING_COMMENT_ID" ]; then
             echo "Updating existing comment (ID: $EXISTING_COMMENT_ID)..."
