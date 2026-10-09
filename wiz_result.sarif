@@ -1,0 +1,906 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Wiz CLI",
+          "informationUri": "https://wiz.io",
+          "name": "WizCLI",
+          "rules": [
+            {
+              "id": "SECRET-SYSTEM-20",
+              "name": "Secret",
+              "shortDescription": {
+                "text": "Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Configuration Files"
+              },
+              "fullDescription": {
+                "text": "Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Configuration Files"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "4.0",
+                "tags": [
+                  "secret",
+                  "security",
+                  "medium"
+                ]
+              }
+            },
+            {
+              "id": "SECRET-1159",
+              "name": "Secret",
+              "shortDescription": {
+                "text": "ASP.NET Validation Key in Web and API Files"
+              },
+              "fullDescription": {
+                "text": "ASP.NET Validation Key in Web and API Files"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "8.0",
+                "tags": [
+                  "secret",
+                  "security",
+                  "high"
+                ]
+              }
+            },
+            {
+              "id": "SECRET-3012",
+              "name": "Secret",
+              "shortDescription": {
+                "text": "DB Connection String in Web and API Files"
+              },
+              "fullDescription": {
+                "text": "DB Connection String in Web and API Files"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "2.0",
+                "tags": [
+                  "secret",
+                  "security",
+                  "low"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Configuration Files\nPath: SeanTest/.github/hopla_config.json\nLine number: 138\nOffset: 4679\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/\nSeverity: medium",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Configuration Files exposed in `SeanTest/.github/hopla_config.json:138`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `SeanTest/.github/hopla_config.json`\n- Line number: `138`\n- Offset: `4679`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/.github/hopla_config.json%23%234679*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/.github/hopla_config.json%23%234679)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/.github/hopla_config.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 138,
+                  "startColumn": 4680,
+                  "endLine": 138,
+                  "endColumn": 4694
+                }
+              },
+              "message": {
+                "text": "SeanTest/.github/hopla_config.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 52\nOffset: 2845\nType: SAAS_API_KEY\nSnippet: validationKey=\"---REDACTED---\"\nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:52`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `52`\n- Offset: `2845`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%232845*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%232845)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 52,
+                  "startColumn": 2846,
+                  "endLine": 52,
+                  "endColumn": 2974
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 92\nOffset: 4821\nType: SAAS_API_KEY\nSnippet: validationKey: ---REDACTED--- \nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:92`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `92`\n- Offset: `4821`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%234821*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%234821)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 92,
+                  "startColumn": 4822,
+                  "endLine": 92,
+                  "endColumn": 4950
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 162\nOffset: 8669\nType: SAAS_API_KEY\nSnippet: validationkey=\"---REDACTED---\"\nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:162`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `162`\n- Offset: `8669`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%238669*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%238669)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 162,
+                  "startColumn": 8670,
+                  "endLine": 162,
+                  "endColumn": 8798
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 163\nOffset: 8968\nType: SAAS_API_KEY\nSnippet: validationkey=\"---REDACTED---\"\nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:163`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `163`\n- Offset: `8968`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%238968*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%238968)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 163,
+                  "startColumn": 8969,
+                  "endLine": 163,
+                  "endColumn": 9097
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 178\nOffset: 9871\nType: SAAS_API_KEY\nSnippet: validationkey=\"---REDACTED---\"\nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:178`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `178`\n- Offset: `9871`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%239871*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%239871)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 178,
+                  "startColumn": 9872,
+                  "endLine": 178,
+                  "endColumn": 10000
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-1159",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Description: ASP.NET Validation Key in Web and API Files\nPath: SeanTest/API Key Leaks/IIS-Machine-Keys.md\nLine number: 184\nOffset: 10444\nType: SAAS_API_KEY\nSnippet: validationkey=\"---REDACTED---\"\nSeverity: high",
+            "markdown": "\n### 🌟 TL;DR\n- ASP.NET Validation Key in Web and API Files exposed in `SeanTest/API Key Leaks/IIS-Machine-Keys.md:184`\n\n### 🔍 Overview\n- Secret type: `SAAS_API_KEY`\n- Path: `SeanTest/API Key Leaks/IIS-Machine-Keys.md`\n- Line number: `184`\n- Offset: `10444`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%2310444*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/API%20Key%20Leaks/IIS-Machine-Keys.md%23%2310444)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/API Key Leaks/IIS-Machine-Keys.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 184,
+                  "startColumn": 10445,
+                  "endLine": 184,
+                  "endColumn": 10573
+                }
+              },
+              "message": {
+                "text": "SeanTest/API Key Leaks/IIS-Machine-Keys.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-3012",
+          "ruleIndex": 2,
+          "level": "note",
+          "message": {
+            "text": "Description: DB Connection String in Web and API Files\nPath: SeanTest/SQL Injection/SQLmap.md\nLine number: 343\nOffset: 17378\nType: DB_CONNECTION_STRING\nSnippet: ---REDACTED---\nSeverity: low",
+            "markdown": "\n### 🌟 TL;DR\n- DB Connection String in Web and API Files exposed in `SeanTest/SQL Injection/SQLmap.md:343`\n\n### 🔍 Overview\n- Secret type: `DB_CONNECTION_STRING`\n- Path: `SeanTest/SQL Injection/SQLmap.md`\n- Line number: `343`\n- Offset: `17378`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/SQL%20Injection/SQLmap.md%23%2317378*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/SQL%20Injection/SQLmap.md%23%2317378)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/SQL Injection/SQLmap.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 343,
+                  "startColumn": 17379,
+                  "endLine": 343,
+                  "endColumn": 17408
+                }
+              },
+              "message": {
+                "text": "SeanTest/SQL Injection/SQLmap.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Web and API Files\nPath: SeanTest/Server Side Request Forgery/README.md\nLine number: 268\nOffset: 9154\nType: PASSWORD\nSnippet: http://127.1.1.1:80\\@@127.2.2.2:80/\\nhttp://127.1.1.1:80:\\@@127.2.2.2:80/\\nhttp://---REDACTED---@127.2.2.2:80/\nSeverity: medium",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Web and API Files exposed in `SeanTest/Server Side Request Forgery/README.md:268`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `SeanTest/Server Side Request Forgery/README.md`\n- Line number: `268`\n- Offset: `9154`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/SeanTest/Server%20Side%20Request%20Forgery/README.md%23%239154*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/SeanTest/Server%20Side%20Request%20Forgery/README.md%23%239154)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SeanTest/Server Side Request Forgery/README.md",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 268,
+                  "startColumn": 9155,
+                  "endLine": 268,
+                  "endColumn": 9169
+                }
+              },
+              "message": {
+                "text": "SeanTest/Server Side Request Forgery/README.md"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 5273\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `5273`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%235273*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%235273)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 5274,
+                  "endLine": 1,
+                  "endColumn": 5298
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 14836\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `14836`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%2314836*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%2314836)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 14837,
+                  "endLine": 1,
+                  "endColumn": 14861
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 180983\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `180983`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%23180983*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%23180983)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 180984,
+                  "endLine": 1,
+                  "endColumn": 181008
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 190546\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `190546`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%23190546*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%23190546)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 190547,
+                  "endLine": 1,
+                  "endColumn": 190571
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-3012",
+          "ruleIndex": 2,
+          "level": "note",
+          "message": {
+            "text": "Description: DB Connection String in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 7619\nType: DB_CONNECTION_STRING\nSnippet: ---REDACTED---",
+            "markdown": "\n### 🌟 TL;DR\n- DB Connection String in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `DB_CONNECTION_STRING`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `7619`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%237619*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%237619)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 7620,
+                  "endLine": 1,
+                  "endColumn": 7659
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-3012",
+          "ruleIndex": 2,
+          "level": "note",
+          "message": {
+            "text": "Description: DB Connection String in Scripts and Code\nPath: results.json\nLine number: 1\nOffset: 183329\nType: DB_CONNECTION_STRING\nSnippet: ---REDACTED---",
+            "markdown": "\n### 🌟 TL;DR\n- DB Connection String in Scripts and Code exposed in `results.json:1`\n\n### 🔍 Overview\n- Secret type: `DB_CONNECTION_STRING`\n- Path: `results.json`\n- Line number: `1`\n- Offset: `183329`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.json%23%23183329*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.json%23%23183329)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.json",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 183330,
+                  "endLine": 1,
+                  "endColumn": 183369
+                }
+              },
+              "message": {
+                "text": "results.json"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 38\nOffset: 1269\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:38`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `38`\n- Offset: `1269`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%231269*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%231269)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 38,
+                  "startColumn": 1270,
+                  "endLine": 38,
+                  "endColumn": 1294
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 41\nOffset: 1434\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:41`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `41`\n- Offset: `1434`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%231434*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%231434)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 41,
+                  "startColumn": 1435,
+                  "endLine": 41,
+                  "endColumn": 1459
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 271\nOffset: 16767\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:271`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `271`\n- Offset: `16767`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2316767*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2316767)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 271,
+                  "startColumn": 16768,
+                  "endLine": 271,
+                  "endColumn": 16792
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 272\nOffset: 17055\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:272`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `272`\n- Offset: `17055`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2317055*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2317055)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 272,
+                  "startColumn": 17056,
+                  "endLine": 272,
+                  "endColumn": 17080
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 495\nOffset: 31160\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:495`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `495`\n- Offset: `31160`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2331160*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2331160)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 495,
+                  "startColumn": 31161,
+                  "endLine": 495,
+                  "endColumn": 31185
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 496\nOffset: 31537\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:496`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `496`\n- Offset: `31537`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2331537*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2331537)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 496,
+                  "startColumn": 31538,
+                  "endLine": 496,
+                  "endColumn": 31562
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 523\nOffset: 33160\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:523`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `523`\n- Offset: `33160`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2333160*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2333160)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 523,
+                  "startColumn": 33161,
+                  "endLine": 523,
+                  "endColumn": 33185
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 524\nOffset: 33403\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:524`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `524`\n- Offset: `33403`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2333403*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2333403)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 524,
+                  "startColumn": 33404,
+                  "endLine": 524,
+                  "endColumn": 33428
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 551\nOffset: 34801\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:551`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `551`\n- Offset: `34801`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2334801*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2334801)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 551,
+                  "startColumn": 34802,
+                  "endLine": 551,
+                  "endColumn": 34826
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 552\nOffset: 35045\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:552`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `552`\n- Offset: `35045`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2335045*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2335045)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 552,
+                  "startColumn": 35046,
+                  "endLine": 552,
+                  "endColumn": 35070
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 579\nOffset: 36448\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:579`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `579`\n- Offset: `36448`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2336448*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2336448)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 579,
+                  "startColumn": 36449,
+                  "endLine": 579,
+                  "endColumn": 36473
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 580\nOffset: 36693\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:580`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `580`\n- Offset: `36693`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2336693*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2336693)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 580,
+                  "startColumn": 36694,
+                  "endLine": 580,
+                  "endColumn": 36718
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 607\nOffset: 38101\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:607`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `607`\n- Offset: `38101`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2338101*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2338101)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 607,
+                  "startColumn": 38102,
+                  "endLine": 607,
+                  "endColumn": 38126
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SECRET-SYSTEM-20",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "Description: Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/)\nPath: results.sarif\nLine number: 608\nOffset: 38346\nType: PASSWORD\nSnippet: http://---REDACTED---@127.2.2.2:80/",
+            "markdown": "\n### 🌟 TL;DR\n- Password in URL (http://127.1.1.1:---REDACTED---@127.2.2.2:80/) exposed in `results.sarif:608`\n\n### 🔍 Overview\n- Secret type: `PASSWORD`\n- Path: `results.sarif`\n- Line number: `608`\n- Offset: `38346`\n\n### 🔗 References\n- [View finding in Wiz](https://app.wiz.io/findings/secret-findings#~(entity~(~%27.%23%23/results.sarif%23%2338346*2cSECRET_INSTANCE)))\n- [View secret data in Security Graph](https://app.wiz.io/explorer/graph#~(view~%27table~query~(type~(~%27SECRET_DATA)~select~true~relationships~(~(type~(~(type~%27INSTANCE_OF~reverse~true))~with~(type~(~%27SECRET_INSTANCE)~select~true~where~(_vertexID~(EQUALS~(~.%23%23/results.sarif%23%2338346)))))))))\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 608,
+                  "startColumn": 38347,
+                  "endLine": 608,
+                  "endColumn": 38371
+                }
+              },
+              "message": {
+                "text": "results.sarif"
+              }
+            }
+          ]
+        }
+      ],
+      "automationDetails": {
+        "id": "wiz-code-scanning/WizCLI"
+      },
+      "columnKind": "utf16CodeUnits",
+      "originalUriBaseIds": {
+        "ROOTPATH": {
+          "uri": "file:///"
+        }
+      }
+    }
+  ]
+}
