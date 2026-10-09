@@ -68,8 +68,8 @@ jobs:
             | objects
             | select(
                 ((.rule.id? // .ruleId? // \"\") | startswith(\"WS-\"))
-                or ((.weaknesses? | type) == \"array\" and (.finding? | type) == \"object")
-                or ((.codeLibraryLanguage? | type) == \"array\" and (.finding? | type) == \"object")
+                or ((.weaknesses? | type) == \"array\" and (.finding? | type) == \"object\")
+                or ((.codeLibraryLanguage? | type) == \"array\" and (.finding? | type) == \"object\")
               )
             | . as \$i
             | (\$i.rule // \$i) as \$r
