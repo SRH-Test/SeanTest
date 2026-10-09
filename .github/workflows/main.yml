@@ -117,11 +117,17 @@ jobs:
                       end),
                 file: (\$loc.artifactLocation.uri // \"N/A\" | sub(\"^(file://)?(\\\\./|/)+\"; \"\")),
                 line: (\$loc.region.startLine // \"N/A\"),
-                cwe: ((\$rule.properties.tags // []) | map(select(test(\"^CWE-\"; \"i\"))) | join(\", \")),
+                cwe: (([\$rule.properties, \$rule.relationships, \$res.properties] | tostring | [scan(\"(?i)cwe[-_/ ]?([0-9]+)\") | \"CWE-\" + .[0]])
+                      + [(\$rule.relationships // [])[] | select((.target.toolComponent.name // \"\") | test(\"cwe\"; \"i\")) | \"CWE-\" + (.target.id | tostring | sub(\"(?i)^cwe-?\"; \"\"))]
+                      | unique | join(\", \")),
                 status: ((\$res.suppressions // []) | if length == 0 then \"Reported\" else \"Ignored\" end)
               }
             | select(.file as \$f | \$changed[0] | index(\$f))
-          ]" wiz_result.sarif)
+          ]
+          | unique_by([.name, .file, .line])
+          | sort_by((.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 elif . == \"LOW\" then 3 else 4 end), .file, .line)" wiz_result.sarif)
+          # Log one SAST rule's metadata so the CWE field location can be confirmed
+          echo "::notice title=sample SAST rule::$(jq -c '[.runs[]? | (.tool.driver.rules // [])[] | select(.id | test("^(CVE-|GHSA-|SECRET-)"; "i") | not)] | .[0] | {id, properties, relationships}' wiz_result.sarif 2>&1 | cut -c1-700)"
           SAST=${SAST:-[]}
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
