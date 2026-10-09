@@ -1,0 +1,12 @@
+{
+  "name": "wiz-vulnerability-test",
+  "version": "1.0.0",
+  "description": "code test for CI pipeline",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "1.20.0",
+    "express": "5.2.1",
+    "express-rate-limit": "8.7.1",
+    "mysql2": "3.24.5"
+  }
+}
