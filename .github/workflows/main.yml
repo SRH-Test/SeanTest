@@ -28,7 +28,7 @@ jobs:
         # We run the scan and save it to a JSON file.
         # '|| true' ensures that even if findings are discovered, the workflow continues to the comment step.
         run: |
-          ./wizcli dir scan --path . --by-policy-hits DISABLED --format json > wiz_result.json || true
+          ./wizcli dir scan --path . --by-policy-hits DISABLED --output wiz_result.json,json --output wiz_result.sarif,sarif || true
 
       - name: Filter & Format Findings
         id: parse_findings
@@ -40,12 +40,12 @@ jobs:
           gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only | jq -R . | jq -s -c . > changed_files.json
           # Log the top-level structure to help diagnose schema differences
           jq -c '{keys: (.result // {} | keys)}' wiz_result.json || true
-          jq -c '(.result // {}) | to_entries[] | select(.key | test("sast|ruleMatches"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
+          jq -c '(.result // {}) | to_entries[] | select(.key | test("sast"; "i")) | {key, sample: (.value | tostring | .[0:1500])}' wiz_result.json || true
 
           SEV='(.severity // "UNKNOWN" | ascii_upcase)'
 
           # 1. Vulnerabilities live under libraries[] and osPackages[] (all severities)
-          VULNS=$(jq -c "[ (.result | .. | objects | select((.vulnerabilities? | type) == \"array\")) as \$p
+          VULNS=$(jq -c "[ ((.result.libraries // [])[], (.result.osPackages // [])[]) as \$p
             | (\$p.vulnerabilities // [])[]
             | . + {pkgName: \$p.name, pkgVersion: \$p.version, sev: $SEV} ]
             | sort_by(.sev | if . == \"CRITICAL\" then 0 elif . == \"HIGH\" then 1 elif . == \"MEDIUM\" then 2 else 3 end)" wiz_result.json)
@@ -63,33 +63,31 @@ jobs:
 
           # Wiz nests SAST records differently across CLI output schemas. Find records by their
           # stable rule/weakness fields rather than assuming they are direct arrays under result.
-          # SAST results are reported under result.ruleMatches (result.sast is null in current CLI output).
-          # Each rule match is expanded to its individual matches (file/line); matches lacking a file are kept
-          # with N/A. When file paths are known, only files touched by this PR are reported.
+          # SAST comes from the SARIF output: results[] joined to tool.driver.rules[] by ruleId.
+          # Only files touched by this PR are reported.
           SAST=$(jq -c --slurpfile changed changed_files.json "[
-            ((.result.ruleMatches // []) + ((.result.sast // []) | if type == \"array\" then . else [] end))[]
-            | . as \$rm
-            | (\$rm.rule // \$rm) as \$r
-            | ( [ \$rm | .. | objects | select(
-                  (.path? // .filename? // .filePath? // .location.filePath? // .location.path? // null) != null
-                ) ] ) as \$locs
-            | (if (\$locs | length) > 0 then \$locs else [\$rm] end)[]
-            | . as \$i
+            .runs[]? as \$run
+            | (\$run.tool.driver.rules // []) as \$rules
+            | (\$run.results // [])[]
+            | . as \$res
+            | (\$rules | map(select(.id == \$res.ruleId)) | .[0] // {}) as \$rule
+            | ((\$rule.properties.\"security-severity\" // null) | if . == null then null else tonumber end) as \$score
+            | (\$res.locations[0].physicalLocation // {}) as \$loc
             | {
-                name: (\$r.name // \$r.ruleName // \$r.id // \$i.name // \"SAST Finding\"),
-                sev: (\$r.severity // \$i.severity // \"UNKNOWN\" | ascii_upcase),
-                file: (\$i.filePath // \$i.filename // \$i.path // \$i.location.filePath // \$i.location.path // \"N/A\"),
-                line: (\$i.startLine // \$i.lineNumber // \$i.line // \$i.location.startLine // \$i.location.range.start.line // \$i.range.start.line // \"N/A\"),
-                cwe: (([ \$i.weaknesses[]?.id, \$r.cwe, \$r.cwes, \$i.cwe, \$i.cwes ]
-                  | map(select(. != null) | if type == \"array\" then join(\", \") else tostring end)
-                  | unique | join(\", \"))),
-                status: ((\$rm.ignoredPolicyMatches // \$i.ignoredPolicyMatches // [])
-                  | map(.ignoreReason // .policy.name // \"Ignored\")
-                  | unique
-                  | if length == 0 then \"Reported\" else \"Ignored: \" + join(\", \") end)
+                name: (\$rule.shortDescription.text // \$rule.name // \$res.message.text // \$res.ruleId // \"SAST Finding\"),
+                sev: (if \$score != null then
+                        (if \$score >= 9 then \"CRITICAL\" elif \$score >= 7 then \"HIGH\" elif \$score >= 4 then \"MEDIUM\" else \"LOW\" end)
+                      else
+                        ((\$rule.properties.tags // []) | map(ascii_upcase) | map(select(. == \"CRITICAL\" or . == \"HIGH\" or . == \"MEDIUM\" or . == \"LOW\" or . == \"INFORMATIONAL\")) | .[0]
+                          // ({error: \"HIGH\", warning: \"MEDIUM\", note: \"LOW\"}[\$res.level // \$rule.defaultConfiguration.level // \"\"] // \"UNKNOWN\"))
+                      end),
+                file: (\$loc.artifactLocation.uri // \"N/A\" | sub(\"^file://\"; \"\") | sub(\"^\\\\./\"; \"\")),
+                line: (\$loc.region.startLine // \"N/A\"),
+                cwe: ((\$rule.properties.tags // []) | map(select(test(\"^CWE-\"; \"i\"))) | join(\", \")),
+                status: ((\$res.suppressions // []) | if length == 0 then \"Reported\" else \"Ignored\" end)
               }
-            | select(.file == \"N/A\" or (.file as \$f | \$changed[0] | index(\$f)))
-          ]" wiz_result.json)
+            | select(.file as \$f | \$changed[0] | index(\$f))
+          ]" wiz_result.sarif)
           SAST=${SAST:-[]}
           SAST_COUNT=$(echo "$SAST" | jq 'length')
 
