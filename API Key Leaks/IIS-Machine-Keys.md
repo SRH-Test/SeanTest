@@ -49,7 +49,7 @@ The `decryption` attribute specifies the encryption algorithm, with options like
 The following example of a machineKey is from [Microsoft documentation](https://docs.microsoft.com/en-us/iis/troubleshoot/security-issues/troubleshooting-forms-authentication).
 
 ```xml
-<machineKey validationKey="87AC8F432C8DB844A4EFD024301AC1AB5808BEE9D1870689B63794D33EE3B55CDB315BB480721A107187561F388C6BEF5B623BF31E2E725FC3F3F71A32BA5DFC" decryptionKey="E001A307CCC8B1ADEA2C55B1246CDCFE8579576997FF92E7" validation="SHA1" />
+<machineKey validationKey="YOUR_VALIDATION_KEY_HERE" decryptionKey="YOUR_DECRYPTION_KEY_HERE" validation="SHA1" />
 ```
 
 Common locations of **web.config** / **machine.config**
@@ -89,7 +89,7 @@ Try multiple machine keys from known products, Microsoft documentation, or other
     ```ps1
     python examples/blacklist3r.py --viewstate /wEPDwUK...j81TYQ== --generator 3E92B2D6
     Matching MachineKeys found!
-    validationKey: C50B3C89CB21F4F1422FF158A5B42D0E8DB8CB5CDA1742572A487D9401E3400267682B202B746511891C1BAF47F8D25C07F6C39A104696DB51F17C529AD3CABE validationAlgo: SHA1
+    validationKey: YOUR_VALIDATION_KEY_HERE validationAlgo: SHA1
     ```
 
 * [irsdl/crapsecrets](https://github.com/irsdl/crapsecrets)
