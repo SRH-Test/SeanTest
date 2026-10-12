@@ -218,7 +218,7 @@ yar -o orgname --both
 
 ```powershell
 go get github.com/michenriksen/gitrob # https://github.com/michenriksen/gitrob
-export GITROB_ACCESS_TOKEN=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+export GITROB_ACCESS_TOKEN=FAKE_GITROB_ACCESS_TOKEN
 gitrob [options] target [target2] ... [targetN]
 ```
 

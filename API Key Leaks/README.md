@@ -38,7 +38,7 @@
 
     ```py
     # Example of hardcoded API key
-    api_key = "1234567890abcdef"
+    api_key = "FAKE_API_KEY_FOR_DOCUMENTATION"
     ```
 
 - **Public Repositories**: Accidentally committing sensitive keys and tokens to publicly accessible version control systems like GitHub.
