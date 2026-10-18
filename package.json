@@ -1,0 +1,10 @@
+{
+  "name": "seantest-app",
+  "version": "1.0.0",
+  "main": "app.js",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "express": "*",
+    "mysql2": "*"
+  }
+}
