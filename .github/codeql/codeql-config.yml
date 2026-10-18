@@ -1,0 +1,10 @@
+# CodeQL configuration for SRH-Test/SeanTest
+#
+# This repository is an intentionally vulnerable security-training/CTF fork of
+# PayloadsAllTheThings. Directories such as "Upload Insecure Files/" contain
+# deliberately malicious sample payloads (e.g. PHP web shells) that are meant
+# to be studied, not executed in production. Exclude these known training
+# paths from SAST scanning so that intentional payloads do not trigger
+# findings against this reference repository.
+paths-ignore:
+  - "Upload Insecure Files/**"
